@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | GA Commerce Leads</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-dark: #2d3748;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack nav and card */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Simple Top Nav for Auth Pages */
+        .auth-nav {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            padding: 0 30px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .auth-nav a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .auth-nav a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .auth-card h2 { 
+            color: var(--primary-bg); 
+            margin-bottom: 30px; 
+            margin-top: 0;
+        }
+
+        .auth-card h2 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .form-group { text-align: left; margin-bottom: 20px; }
+
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #4a5568; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        input:focus { outline: none; border-color: var(--accent-color); }
+
+        .btn-login {
+            width: 100%;
+            background: var(--accent-color);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.2s;
+        }
+
+        .btn-login:hover { background: #e67e22; }
+
+        .footer-links { margin-top: 25px; font-size: 0.9rem; color: #718096; }
+        .footer-links a { color: var(--primary-bg); text-decoration: none; font-weight: 600; }
+        .footer-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <nav class="auth-nav">
+        <a href="{% url 'home' %}">← Back to Home</a>
+    </nav>
+
+    <div class="auth-card">
+        <h2><a href="{% url 'home' %}">Welcome Back</a></h2>
+        
+        {% if messages %}
+            <div style="margin-bottom: 15px; text-align: left;">
+                {% for message in messages %}
+                    <div style="padding: 10px; border-radius: 4px; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; font-size: 14px;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'login' %}" autocomplete="off">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter username" autocomplete="off" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="new-password" required>
+            </div>
+
+            <button type="submit" class="btn-login">Login to Dashboard</button>
+        </form>
+
+        {% if not user.is_authenticated %}
+        <div class="footer-links">
+            New here? <a href="{% url 'register' %}">Create an account</a>
+        </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>

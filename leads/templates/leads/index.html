@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GA Commerce Leads | Premium Business Data</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-light: #ffffff;
+            --text-dark: #2d3748;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; color: var(--text-dark); }
+        
+        /* Navigation Styles */
+        nav {
+            background: var(--primary-bg);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between; /* Adjusted to balance brand and account menu */
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-brand h2 {
+            color: white;
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-btn {
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            transition: all 0.2s ease;
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .nav-btn:hover {
+            color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* --- Profile Dropdown Layout Styles --- */
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-trigger {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .nav-avatar, .avatar-fallback {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+            box-sizing: border-box;
+            transition: transform 0.2s;
+        }
+
+        .nav-avatar:hover, .avatar-fallback:hover {
+            transform: scale(1.05);
+        }
+
+        .avatar-fallback {
+            background-color: white;
+            color: var(--primary-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #ffffff;
+            min-width: 250px;
+            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            text-align: left; /* Restores standard text alignment inside card entries */
+        }
+
+        .dropdown-header {
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .dropdown-header strong {
+            color: var(--primary-bg);
+            font-size: 0.95rem;
+        }
+
+        .user-email {
+            display: block;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 2px;
+            word-break: break-all;
+        }
+
+        .dropdown-content hr {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 0;
+        }
+
+        .menu-item {
+            color: var(--text-dark);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .purchase-highlight {
+            color: #d97706;
+            font-weight: 600;
+            background-color: rgba(245, 158, 11, 0.05);
+        }
+
+        .disabled-premium {
+            color: #a0aec0 !important;
+            background-color: #f8fafc;
+            cursor: not-allowed;
+            padding: 12px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge-upgrade {
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .text-warning {
+            color: #dc2626 !important;
+        }
+
+        .text-danger {
+            color: #718096 !important;
+        }
+
+        /* Hero Section */
+        .hero { 
+            background: var(--primary-bg); 
+            color: white; 
+            padding: 80px 20px 100px 20px; 
+            text-align: center; 
+        }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 10px; letter-spacing: -1px; }
+        .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 700px; margin: 0 auto 30px auto; }
+
+        /* Content Container */
+        .container { max-width: 1000px; margin: auto; padding: 60px 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
+        
+        .card { 
+            background: #fff;
+            border: 1px solid #eee; 
+            padding: 30px; 
+            border-radius: 12px; 
+            text-align: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .card h3 { color: var(--primary-bg); margin-top: 0; }
+
+        .btn-main { 
+            background: var(--accent-color); 
+            color: white; 
+            padding: 18px 40px; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            display: inline-block; 
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-main:hover { background: #e67e22; transform: translateY(-1px); }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-brand">
+            <h2>GA Commerce Leads</h2>
+        </div>
+        <div class="nav-container">
+            {% if is_authenticated_user %}
+                <div class="profile-dropdown">
+                    <button class="dropdown-trigger" onclick="toggleDropdown(event)">
+                        {% if avatar_url %}
+                            <img src="{{ avatar_url }}" alt="Profile" class="nav-avatar">
+                        {% else %}
+                            <div class="avatar-fallback">{{ username|slice:":2"|upper }}</div>
+                        {% endif %}
+                    </button>
+                    
+                    <div id="profileMenu" class="dropdown-content">
+                        <div class="dropdown-header">
+                            <strong>{{ username }}</strong>
+                            <span class="user-email">{{ user_email }}</span>
+                        </div>
+                        <hr>
+                        
+                        <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
+                        
+                        {% if is_premium_member %}
+                            <a href="{% url 'stripe_customer_portal' %}" class="menu-item text-warning">💳 Cancel Subscription</a>
+                        {% else %}
+                            <div class="menu-item disabled-premium">
+                                <span>🔒 Premium Directory Access</span>
+                                <span class="badge-upgrade">Locked</span>
+                            </div>
+                            <a href="{% url 'purchase' %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
+                        {% endif %}
+                        
+                        <hr>
+                        <a href="{% url 'logout' %}" class="menu-item text-danger">🚪 Logout</a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" class="nav-btn">Login</a>
+                <a href="{% url 'register' %}" class="nav-btn" style="background: var(--accent-color); color: white; padding: 8px 20px; border-radius: 5px; font-weight: bold;">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Direct Access to Georgia's Decision Makers</h1>
+        <p>Stop scraping. Start selling. Over 150+ verified Chamber of Commerce leads at your fingertips.</p>
+        {% if is_authenticated_user %}
+            <a href="{% url 'leads_list' %}" class="btn-main">View Leads Dashboard</a>
+        {% else %}
+            <a href="{% url 'register' %}" class="btn-main">Get Instant Access Now</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <h2 style="text-align:center; margin-bottom: 40px; font-size: 2rem; color: var(--primary-bg);">Why GA Commerce Leads?</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Verified Data</h3>
+                <p>Curated lists from Metro Atlanta, Cobb, Gwinnett, and Macon Chambers.</p>
+            </div>
+            <div class="card">
+                <h3>Clean Formatting</h3>
+                <p>Professional directory-style names ready for your CRM or outreach.</p>
+            </div>
+            <div class="card">
+                <h3>Direct Emails</h3>
+                <p>No generic "info@" addresses. Reach the staff who actually make decisions.</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+function toggleDropdown(event) {
+    event.stopPropagation();
+    var menu = document.getElementById("profileMenu");
+    if (menu.style.display === "block") {
+        menu.style.display = "none";
+    } else {
+        menu.style.display = "block";
+    }
+}
+
+window.onclick = function(event) {
+    var menu = document.getElementById("profileMenu");
+    if (menu && menu.style.display === "block") {
+        if (!event.target.closest('.profile-dropdown')) {
+            menu.style.display = "none";
+        }
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Georgia Chamber Leads</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .page {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #1f3b88; font-size: 1.8rem; margin-bottom: 10px; }
+        .price { font-size: 2rem; font-weight: bold; color: #333; margin: 20px 0; }
+        .description { color: #6c757d; font-size: 1rem; line-height: 1.5; margin-bottom: 30px; }
+        .btn-primary {
+            background-color: #1f3b88;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover { background-color: #152960; }
+    </style>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <div class="page">
+        <h1>Buy Georgia Chamber Leads</h1>
+        <div class="price">$19.99 USD</div>
+        <div class="description">Secure your access to the latest Georgia Chamber of Commerce leads with a one-time payment.</div>
+        
+        <form action="{% url 'create_checkout_session' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Pay with Card</button>
+        </form>
+    </div>
+</body>
+</html>

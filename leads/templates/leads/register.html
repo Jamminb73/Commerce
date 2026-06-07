@@ -121,6 +121,11 @@
 
         <form method="POST">
             {% csrf_token %}
+            
+            <div style="display: none;" aria-hidden="true">
+                <input type="text" name="hp_email" id="hp_email" autocomplete="off" tabindex="-1">
+            </div>
+
             <div class="form-group">
                 <label for="email">Email Address</label>
                 <input type="email" id="email" name="email" placeholder="name@company.com" required>

@@ -2,7 +2,7 @@ import datetime
 import stripe
 from django.conf import settings
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout  # <-- logout utility imported here
+from django.contrib.auth import login, authenticate, logout  
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 from django.views.decorators.csrf import csrf_exempt
@@ -16,7 +16,6 @@ def landing_page(request):
     Renders the main platform homepage.
     Unified account navigation variables are passed to handle consistent dropdown menu layouts.
     """
-    # Build the unified account navigation variables for the homepage navbar layout
     context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
@@ -76,29 +75,23 @@ def leads_list(request):
     if request.user.is_authenticated and user_context['is_premium_member']:
         safe_leads = []
         for lead in raw_leads:
-            # Type safety check for email field
             lead_email = getattr(lead, 'email', "") or ""
-
-            # Prioritize high-fidelity first/last name tracking fields
             first = getattr(lead, 'first_name', '') or ''
             last = getattr(lead, 'last_name', '') or ''
             
             if first or last:
                 full_name = f"{first} {last}".strip()
             else:
-                # Fallback to legacy string name field if granular fields are empty
                 legacy_name = getattr(lead, 'name', '')
                 if isinstance(legacy_name, (datetime.datetime, datetime.date)):
                     full_name = legacy_name.isoformat()
                 else:
                     full_name = str(legacy_name).strip() if legacy_name else "Chamber Member"
 
-            # Clean up default Title checks
             lead_title = getattr(lead, 'title', "")
             title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
             final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
 
-            # Prioritize Organization field over legacy Chamber string
             org_str = getattr(lead, 'organization', '') or ''
             chamber_str = getattr(lead, 'chamber', '') or ''
             final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
@@ -115,7 +108,7 @@ def leads_list(request):
                 'title': final_title,
                 'chamber': final_chamber,
                 'email': lead_email if lead_email else "No Email Provided",
-                'is_locked': False  # Fully viewable row styling
+                'is_locked': False  
             })
 
         context = {**user_context, 'leads': safe_leads}
@@ -129,14 +122,12 @@ def leads_list(request):
         if lead_email:
             email_parts = lead_email.split('@')
             if len(email_parts) == 2:
-                # Mask user identification string before domain
                 masked_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
             else:
                 masked_email = "l***@..."
         else:
             masked_email = "No Email Provided"
 
-        # Safe fallback checks for organization visibility on restricted listings
         org_str = getattr(lead, 'organization', '') or ''
         chamber_str = getattr(lead, 'chamber', '') or ''
         final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
@@ -153,7 +144,7 @@ def leads_list(request):
             'title': final_title,
             'chamber': final_chamber,
             'email': masked_email,
-            'is_locked': True  # Triggers greyed-out visual layout row filters
+            'is_locked': True  
         })
         
     context = {**user_context, 'leads': masked_leads}
@@ -185,12 +176,21 @@ def login_view(request):
 def logout_view(request):
     """Logs out the active user session and redirects to the natural home page."""
     logout(request)
-    return redirect('home')  # Points straight back to your landing page route name
+    return redirect('home')  
 
 
 def register_view(request):
     """Handles both rendering the registration form and creating new user accounts securely."""
     if request.method == 'POST':
+        # -------------------------------------------------------------
+        # ANTI-BOT HONEYPOT TRAP
+        # -------------------------------------------------------------
+        honeypot = request.POST.get('hp_email', '')
+        if honeypot:
+            # Silently dump the bot's processing request and trick it with a fake success path redirect
+            return redirect('login')
+        # -------------------------------------------------------------
+
         u_name = request.POST.get('username')
         email = request.POST.get('email')
         p_word = request.POST.get('password')
@@ -247,7 +247,7 @@ def create_checkout_session(request):
                                 'name': 'CommerceSales Premium Access',
                                 'description': 'Full unmasked access to Georgia Chamber Lead directories.',
                             },
-                            'unit_amount': 4900,  # Scaled down to $49.00 to keep it affordable
+                            'unit_amount': 4900,  
                         },
                         'quantity': 1,
                     },

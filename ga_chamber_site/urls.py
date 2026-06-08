@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include  # <-- Added 'include' here so we can load your blog urls
 from django.contrib.sitemaps.views import sitemap  # Added for dynamic sitemap rendering
 
 from leads.sitemaps import StaticViewSitemap        # Imported your new sitemap class
@@ -36,6 +36,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', landing_page, name='home'),
     path('leads/', leads_list, name='leads_list'),  
+    
+    # NEW: Secure Backend Blog App Router
+    path('blog/', include('blog.urls')), 
     
     # Local Development Cheat Code Backdoor
     path('manual-upgrade/', manual_upgrade_test, name='manual_upgrade'),

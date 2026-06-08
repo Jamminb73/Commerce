@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Dashboard | Chamber Pipeline</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-dark: #2d3748;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f7fafc; color: var(--text-dark); }
+        
+        .admin-header {
+            background: var(--primary-bg);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-header h1 { margin: 0; font-size: 1.5rem; }
+        .back-btn { color: white; text-decoration: none; font-weight: 600; opacity: 0.8; transition: all 0.2s; }
+        .back-btn:hover { opacity: 1; color: var(--accent-color); }
+        
+        .dashboard-container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .action-bar h2 { margin: 0; color: var(--primary-bg); }
+        
+        .btn-create {
+            background: var(--accent-color);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-create:hover { background: #e67e22; }
+        
+        .post-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 15px; }
+        .post-meta { font-size: 0.85rem; color: #718096; margin-bottom: 10px; }
+        .post-title { margin: 0 0 5px 0; color: var(--primary-bg); font-size: 1.3rem; }
+        .post-slug { font-family: monospace; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; color: #4a5568; }
+        
+        .empty-state { background: white; text-align: center; padding: 40px; border-radius: 8px; border: 1px dashed #cbd5e0; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header">
+        <h1>✍️ Chamber Pipeline Blog Command Center</h1>
+        <a href="{% url 'home' %}" class="back-btn">← Back to Main Site</a>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <div class="action-bar">
+            <h2>Your Published Articles</h2>
+            <a href="{% url 'blog:create_post' %}" class="btn-create">+ Write New Blog Post</a>
+        </div>
+
+        {% if posts %}
+            {% for post in posts %}
+                <div class="post-card">
+                    <div class="post-meta">
+                        📅 Published on {{ post.created_at|date:"F d, Y" }} at {{ post.created_at|date:"P" }}
+                    </div>
+                    <h3 class="post-title">{{ post.title }}</h3>
+                    <div>URL Path: <span class="post-slug">/blog/{{ post.slug }}/</span></div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <h3>No posts found in the database yet.</h3>
+                <p>Click the button above to draft your very first B2B search-engine optimized article!</p>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>

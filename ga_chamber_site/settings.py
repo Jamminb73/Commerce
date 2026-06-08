@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',    # Added for dynamic XML Sitemap generation
     'django.contrib.sites',       # Added to handle absolute production URLs
     'leads.apps.LeadsConfig',
+    'blog.apps.BlogConfig',
 ]
 
 MIDDLEWARE = [

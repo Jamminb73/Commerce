@@ -243,6 +243,12 @@
                         
                         <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
                         
+                        {% if request.user.is_staff %}
+                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid var(--accent-color);">
+                                ✍️ Blog Dashboard
+                            </a>
+                        {% endif %}
+                        
                         {% if is_premium_member %}
                             <a href="{% url 'stripe_customer_portal' %}" class="menu-item text-warning">💳 Cancel Subscription</a>
                         {% else %}

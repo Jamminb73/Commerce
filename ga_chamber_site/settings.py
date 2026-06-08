@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',    # Added for dynamic XML Sitemap generation
+    'django.contrib.sites',       # Added to handle absolute production URLs
     'leads.apps.LeadsConfig',
 ]
 
@@ -119,6 +121,10 @@ STATIC_URL = 'static/'
 # Stripe sandbox configuration
 STRIPE_SECRET_KEY = ''       # Filled locally by local_settings.py or via env variables on production
 STRIPE_PUBLISHABLE_KEY = ''  # Filled locally by local_settings.py or via env variables on production
+
+
+# Required for django.contrib.sites framework
+SITE_ID = 1
 
 
 # ==============================================================================

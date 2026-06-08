@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path
+from django.contrib.sitemaps.views import sitemap  # Added for dynamic sitemap rendering
 
+from leads.sitemaps import StaticViewSitemap        # Imported your new sitemap class
 from leads.views import (
     landing_page,
     leads_list,       
@@ -16,7 +18,15 @@ from leads.views import (
     stripe_customer_portal,  
 )
 
+# Dictionary mapping for the sitemap framework
+sitemaps = {
+    'static': StaticViewSitemap,
+}
+
 urlpatterns = [
+    # Search Engine Infrastructure
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+
     # Auth Routes (Logout placed at top to ensure clean session termination)
     path('logout/', logout_view, name='logout'), 
     path('login/', login_view, name='login'),

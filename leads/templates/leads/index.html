@@ -19,7 +19,7 @@
             background: var(--primary-bg);
             padding: 15px 30px;
             display: flex;
-            justify-content: space-between; /* Adjusted to balance brand and account menu */
+            justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
@@ -102,7 +102,7 @@
             margin-top: 10px;
             border: 1px solid #e2e8f0;
             overflow: hidden;
-            text-align: left; /* Restores standard text alignment inside card entries */
+            text-align: left;
         }
 
         .dropdown-header {
@@ -202,6 +202,7 @@
         }
         .card h3 { color: var(--primary-bg); margin-top: 0; }
 
+        /* Reusable base button mapping fallback for structural hooks */
         .btn-main { 
             background: var(--accent-color); 
             color: white; 
@@ -213,6 +214,8 @@
             font-size: 1.1rem;
             box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
             transition: all 0.2s;
+            border: none;
+            cursor: pointer;
         }
         .btn-main:hover { background: #e67e22; transform: translateY(-1px); }
     </style>
@@ -274,9 +277,13 @@
         <h1>Direct Access to Georgia's Decision Makers</h1>
         <p>Stop scraping. Start selling. Over 150+ verified Chamber of Commerce leads at your fingertips.</p>
         {% if is_authenticated_user %}
-            <a href="{% url 'leads_list' %}" class="btn-main">View Leads Dashboard</a>
+            <a href="{% url 'leads_list' %}" style="text-decoration: none;">
+                {% include "leads/components/base_button.html" with button_text="View Leads Dashboard" button_classes="btn-main" %}
+            </a>
         {% else %}
-            <a href="{% url 'register' %}" class="btn-main">Get Instant Access Now</a>
+            <a href="{% url 'register' %}" style="text-decoration: none;">
+                {% include "leads/components/base_button.html" with button_text="Get Instant Access Now" button_classes="btn-main" %}
+            </a>
         {% endif %}
     </div>
 

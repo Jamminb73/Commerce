@@ -59,7 +59,8 @@ ROOT_URLCONF = 'ga_chamber_site.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'leads' / 'templates' / 'leads'],
+        # FIX: Emptied DIRS so APP_DIRS can crawl both apps independently
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

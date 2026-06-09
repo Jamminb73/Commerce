@@ -205,6 +205,40 @@
             color: #718096 !important;
         }
 
+        /* --- Structural classes mapping to base button styles --- */
+        .btn-export {
+            background: #38a169;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.2);
+            transition: background 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-export:hover { background: #2f855a; }
+
+        .btn-export-locked {
+            background: #e2e8f0;
+            color: #718096;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border: 1px dashed #cbd5e0;
+        }
+
         /* --- Table Layout Row Styling --- */
         .table-responsive {
             width: 100%;
@@ -358,12 +392,12 @@
 
     <div class="dashboard-actions" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
         {% if is_premium_member %}
-            <a href="#" class="btn-export" style="background: #38a169; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(56, 161, 105, 0.2); transition: background 0.2s;">
-                📥 Export New Leads to CSV
+            <a href="#" style="text-decoration: none;">
+                {% include "leads/components/base_button.html" with button_text="📥 Export New Leads to CSV" button_classes="btn-export" %}
             </a>
         {% else %}
-            <a href="{% url 'purchase' %}" class="btn-export-locked" style="background: #e2e8f0; color: #718096; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1px dashed #cbd5e0;">
-                🔒 Export to CRM (Premium Only)
+            <a href="{% url 'purchase' %}" style="text-decoration: none;">
+                {% include "leads/components/base_button.html" with button_text="🔒 Export to CRM (Premium Only)" button_classes="btn-export-locked" %}
             </a>
         {% endif %}
     </div>

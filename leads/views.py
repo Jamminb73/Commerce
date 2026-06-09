@@ -28,7 +28,8 @@ def landing_page(request):
         context['is_premium_member'] = request.user.profile.is_premium
         context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
 
-    return render(request, 'index.html', context)
+    # FIX: Explicitly namespace 'index.html' to 'leads/index.html'
+    return render(request, 'leads/index.html', context)
 
 
 def leads_list(request):
@@ -187,7 +188,6 @@ def register_view(request):
         # -------------------------------------------------------------
         honeypot = request.POST.get('hp_email', '')
         if honeypot:
-            # Silently dump the bot's processing request and trick it with a fake success path redirect
             return redirect('login')
         # -------------------------------------------------------------
 
@@ -195,12 +195,10 @@ def register_view(request):
         email = request.POST.get('email')
         p_word = request.POST.get('password')
 
-        # Baseline empty value sanitization tracking
         if not u_name or not email or not p_word:
             messages.error(request, "All form input fields are required.")
             return render(request, 'register.html')
 
-        # Check unique database states to avoid model exception crashes
         if User.objects.filter(username=u_name).exists():
             messages.error(request, "That username configuration has already been taken.")
             return render(request, 'register.html')
@@ -210,14 +208,8 @@ def register_view(request):
             return render(request, 'register.html')
 
         try:
-            # 1. Save user object instance securely with hashed configuration blocks
             user = User.objects.create_user(username=u_name, email=email, password=p_word)
-            
-            # Note: Your post_save signal auto-attaches their blank Profile class here.
-            
-            # 2. Login the new creation token immediately
             login(request, user)
-            
             messages.success(request, f"Welcome to the dashboard, {u_name}!")
             return redirect('leads_list')
             

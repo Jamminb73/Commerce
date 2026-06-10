@@ -13,7 +13,7 @@ class ChamberLeadAdmin(admin.ModelAdmin):
     """Configures the column headers visible in the admin lead directory table."""
     list_display = ('first_name', 'last_name', 'title', 'organization', 'email', 'phone')
     search_fields = ('first_name', 'last_name', 'organization', 'email')
-    list_filter = ('organization',)
+    #list_filter = ('organization',)
 
     # Point Django to a custom layout template that injects our button tool link
     change_list_template = "admin/leads_changelist.html"

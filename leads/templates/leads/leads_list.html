@@ -465,19 +465,24 @@
 
         <div class="pagination-buttons" style="display: flex; align-items: center; gap: 6px;">
             {% if page_obj.has_previous %}
-                <a href="?page=1{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">&laquo; First</a>
+                <a href="?page=1{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">« First</a>
                 <a href="?page={{ page_obj.previous_page_number }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Previous</a>
             {% endif %}
 
             <span class="current-page" style="margin: 0 10px; font-weight: 600; font-size: 0.9rem; color: var(--primary-bg);">
-                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                Page {{ page_obj.number }} | {{ page_obj.paginator.num_pages }}
             </span>
 
             {% if page_obj.has_next %}
                 <a href="?page={{ page_obj.next_page_number }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Next</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Last &raquo;</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Last »</a>
             {% endif %}
         </div>
+    </div>
+
+    <div class="request-box-container" style="margin-top: 40px; padding: 30px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 12px; text-align: center;">
+        <h3 style="color: var(--primary-bg); margin-top: 0; margin-bottom: 8px; font-size: 1.3rem; font-weight: 700;">Don't see the city or chamber you need?</h3>
+        <p style="color: #718096; margin-bottom: 0; font-size: 0.95rem; font-weight: 500;">We are building an on-demand request system so you can tell us which Georgia directories to scrape next!</p>
     </div>
 </div>
 

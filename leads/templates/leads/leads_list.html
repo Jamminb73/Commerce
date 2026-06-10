@@ -339,6 +339,25 @@
             color: white;
             transform: translateY(-1px);
         }
+
+        /* --- Frontend Pagination Styling Rules --- */
+        .btn-pagination {
+            text-decoration: none;
+            color: var(--primary-bg);
+            background: #ffffff;
+            border: 1px solid #cbd5e0;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-pagination:hover {
+            background: #f1f5f9;
+            border-color: #a0aec0;
+            color: var(--accent-color);
+        }
     </style>
 </head>
 <body>
@@ -413,7 +432,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for lead in leads %}
+                {% for lead in page_obj %}
                     <tr class="{% if lead.is_locked %}locked-row{% endif %}">
                         {% if not lead.is_locked %}
                             <td class="name-cell">{{ lead.name }}</td>
@@ -437,6 +456,28 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #edf2f7; color: #4a5568;">
+        <div class="pagination-info" style="font-size: 0.9rem; font-weight: 500;">
+            <span>Showing leads {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+        </div>
+
+        <div class="pagination-buttons" style="display: flex; align-items: center; gap: 6px;">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">&laquo; First</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Previous</a>
+            {% endif %}
+
+            <span class="current-page" style="margin: 0 10px; font-weight: 600; font-size: 0.9rem; color: var(--primary-bg);">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_search %}&q={{ current_search }}{% endif %}{% if current_chamber %}&chamber={{ current_chamber }}{% endif %}" class="btn-pagination">Last &raquo;</a>
+            {% endif %}
+        </div>
     </div>
 </div>
 

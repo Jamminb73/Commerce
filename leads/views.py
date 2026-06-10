@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.utils.dateparse import parse_datetime
+from django.core.paginator import Paginator  # <-- Added Django's built-in Paginator
 from .models import ChamberLead
 
 def landing_page(request):
@@ -38,8 +39,8 @@ def leads_list(request):
     Premium users see clean, full unmasked granular fields.
     Guests and free users see 'Chamber Member' and masked emails.
     """
-    # 1. Pull base query set
-    raw_leads = ChamberLead.objects.all()
+    # 1. Pull base query set - Ordered consistently to prevent Postgres pagination record skipping
+    raw_leads = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
     
     # 2. Extract GET filter parameters from search bar controls
     search_query = request.GET.get('q', '').strip()
@@ -112,7 +113,12 @@ def leads_list(request):
                 'is_locked': False  
             })
 
-        context = {**user_context, 'leads': safe_leads}
+        # CHUNK RESULTS: Set up 50 items per page pagination for premium users
+        paginator = Paginator(safe_leads, 50)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {**user_context, 'page_obj': page_obj}
         return render(request, 'leads/leads_list.html', context)
     
     # 5. FREE / ANONYMOUS BLOCK (Masked Data)
@@ -148,7 +154,12 @@ def leads_list(request):
             'is_locked': True  
         })
         
-    context = {**user_context, 'leads': masked_leads}
+    # CHUNK RESULTS: Set up 50 items per page pagination for free/guest users
+    paginator = Paginator(masked_leads, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {**user_context, 'page_obj': page_obj}
     return render(request, 'leads/leads_list.html', context)
 
 

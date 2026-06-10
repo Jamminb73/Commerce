@@ -16,7 +16,7 @@ class ChamberLeadAdmin(admin.ModelAdmin):
     #list_filter = ('organization',)
 
     # Point Django to a custom layout template that injects our button tool link
-    change_list_template = "admin/leads_changelist.html"
+    #change_list_template = "admin/leads_changelist.html"
 
     def get_urls(self):
         """Adds a private route inside the admin wrapper for handling uploads safely."""

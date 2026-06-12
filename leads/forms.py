@@ -38,6 +38,25 @@ class ChamberRequestForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_chambers_count'})
     )
 
+    # Overridden definitions to drop database validation boundaries on the front-end user
+    chamber_name = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': '3', 
+            'placeholder': '(Optional) Specify preferred local chambers, or leave blank for automatic discovery...'
+        })
+    )
+    
+    chamber_url = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': '3', 
+            'placeholder': '(Optional) Paste specific directory index URLs if you have them, or leave blank to automate lookups...'
+        })
+    )
+
     class Meta:
         model = ChamberRequest
         fields = ['user_email', 'chambers_count', 'state', 'city_or_region', 'chamber_name', 'chamber_url']
@@ -49,16 +68,6 @@ class ChamberRequestForm(forms.ModelForm):
             'city_or_region': forms.TextInput(attrs={
                 'class': 'form-control', 
                 'placeholder': 'e.g., Austin, Round Rock, Buda'
-            }),
-            'chamber_name': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': '3', 
-                'placeholder': 'List the specific Chambers of Commerce (one per line or comma-separated)...'
-            }),
-            'chamber_url': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': '3', 
-                'placeholder': 'Paste the direct directory links to each target (one per line)...'
             }),
         }
 

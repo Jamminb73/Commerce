@@ -1,3 +1,4 @@
+import uuid
 import datetime
 import stripe
 from django.conf import settings
@@ -12,7 +13,7 @@ from django.utils.dateparse import parse_datetime
 from django.core.paginator import Paginator  
 from django.core.mail import send_mail  
 
-from .models import ChamberLead, ChamberDirectory, ChamberRequest
+from .models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
 from .forms import ChamberRequestForm  
 
 def landing_page(request):
@@ -132,8 +133,8 @@ def request_success_view(request):
 def leads_list(request):
     """
     Displays the list of chamber leads with live search query mapping and regional filtering. 
-    Premium users see clean, full unmasked granular fields.
-    Guests and free users see 'Chamber Member' and masked emails.
+    Users who have explicitly purchased specific directories or leads see clean, full unmasked data.
+    Unpurchased rows default to 'Chamber Member' and masked emails.
     """
     raw_leads = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
     
@@ -165,11 +166,41 @@ def leads_list(request):
         user_context['is_premium_member'] = request.user.profile.is_premium
         user_context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
 
-    # 4. PREMIUM USER BLOCK (Full Unmasked Data)
-    if request.user.is_authenticated and user_context['is_premium_member']:
-        safe_leads = []
-        for lead in raw_leads:
-            lead_email = getattr(lead, 'email', "") or ""
+    # Compile the active set of items this specific user has paid access boundaries for
+    purchased_directory_ids = set()
+    purchased_lead_ids = set()
+    
+    if request.user.is_authenticated:
+        purchased_directory_ids = set(UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True))
+        purchased_lead_ids = set(UserPurchase.objects.filter(user=request.user, lead__isnull=False).values_list('lead_id', flat=True))
+
+    processed_leads = []
+    for lead in raw_leads:
+        # Check if the user has unlocked this specific item by directory OR individual lead purchase
+        has_purchased_item = (
+            (lead.directory_id in purchased_directory_ids) or 
+            (lead.id in purchased_lead_ids) or
+            user_context['is_premium_member']  # Backward compatibility global override
+        )
+
+        lead_email = getattr(lead, 'email', "") or ""
+        org_str = getattr(lead, 'organization', '') or ''
+        chamber_str = getattr(lead, 'chamber', '') or ''
+        final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
+        
+        if final_chamber.lower() in ["general", "false", "none"]:
+            if lead_email and '@' in lead_email:
+                domain = lead_email.split('@')[1].split('.')[0]
+                final_chamber = f"{domain.upper()} Chamber"
+            else:
+                final_chamber = "Georgia Chamber"
+
+        lead_title = getattr(lead, 'title', "")
+        title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
+        final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
+
+        if has_purchased_item:
+            # 1. PAID/UNLOCKED DATA FLOW
             first = getattr(lead, 'first_name', '') or ''
             last = getattr(lead, 'last_name', '') or ''
             
@@ -182,70 +213,33 @@ def leads_list(request):
                 else:
                     full_name = str(legacy_name).strip() if legacy_name else "Chamber Member"
 
-            lead_title = getattr(lead, 'title', "")
-            title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
-            final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
-
-            org_str = getattr(lead, 'organization', '') or ''
-            chamber_str = getattr(lead, 'chamber', '') or ''
-            final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
-            
-            if final_chamber.lower() in ["general", "false", "none"]:
-                if lead_email and '@' in lead_email:
-                    domain = lead_email.split('@')[1].split('.')[0]
-                    final_chamber = f"{domain.upper()} Chamber"
-                else:
-                    final_chamber = "Georgia Chamber"
-
-            safe_leads.append({
+            processed_leads.append({
                 'name': full_name,
                 'title': final_title,
                 'chamber': final_chamber,
                 'email': lead_email if lead_email else "No Email Provided",
                 'is_locked': False  
             })
-
-        paginator = Paginator(safe_leads, 50)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-
-        context = {**user_context, 'page_obj': page_obj}
-        return render(request, 'leads/leads_list.html', context)
-    
-    # 5. FREE / ANONYMOUS BLOCK (Masked Data)
-    masked_leads = []
-    for lead in raw_leads:
-        lead_email = getattr(lead, 'email', "") or ""
-
-        if lead_email:
-            email_parts = lead_email.split('@')
-            if len(email_parts) == 2:
-                masked_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
-            else:
-                masked_email = "l***@..."
         else:
-            masked_email = "No Email Provided"
+            # 2. MASKED DATA FLOW (User hasn't paid for this asset yet)
+            if lead_email:
+                email_parts = lead_email.split('@')
+                if len(email_parts) == 2:
+                    masked_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
+                else:
+                    masked_email = "l***@..."
+            else:
+                masked_email = "No Email Provided"
 
-        org_str = getattr(lead, 'organization', '') or ''
-        chamber_str = getattr(lead, 'chamber', '') or ''
-        final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
-        if final_chamber.lower() in ["general", "false"]:
-            if lead_email and '@' in lead_email:
-                final_chamber = f"{lead_email.split('@')[1].split('.')[0].upper()} Chamber"
-
-        lead_title = getattr(lead, 'title', "")
-        title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
-        final_title = "Chamber Executive" if title_str.lower() in ["false", ""] else title_str
-
-        masked_leads.append({
-            'name': 'Chamber Member',
-            'title': final_title,
-            'chamber': final_chamber,
-            'email': masked_email,
-            'is_locked': True  
-        })
+            processed_leads.append({
+                'name': 'Chamber Member',
+                'title': final_title,
+                'chamber': final_chamber,
+                'email': masked_email,
+                'is_locked': True  
+            })
         
-    paginator = Paginator(masked_leads, 50)
+    paginator = Paginator(processed_leads, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -317,7 +311,7 @@ def register_view(request):
 def create_checkout_session(request, request_id):
     """
     Dynamically generates a Stripe Checkout Session matching the specific 
-    cost tier recorded on the incoming ChamberRequest instance.
+    cost tier recorded on the incoming ChamberRequest instance, mapping an internal Order tracking object.
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -330,9 +324,22 @@ def create_checkout_session(request, request_id):
             messages.error(request, "Unauthorized request checkout attempt.")
             return redirect('leads_list')
             
-        # Convert cost database decimal directly into Stripe integer cents ($9.99 -> 999)
+        # Convert cost database decimal directly into Stripe integer cents ($49.00 -> 4900)
         amount_in_cents = int(float(scrape_request.estimated_cost) * 100)
         
+        # Create the internal transaction order token before shifting the user to Stripe
+        generated_order_id = f"ORD-{uuid.uuid4().hex[:12].upper()}"
+        new_order = Order.objects.create(
+            user=request.user,
+            order_id=generated_order_id,
+            amount_paid=scrape_request.estimated_cost,
+            is_paid=False
+        )
+        
+        # Map this order explicitly to the scrape request via OrderItem
+        # Note: If your scrapers fulfill targets at the ChamberDirectory level, you can later attach directory=here
+        OrderItem.objects.create(order=new_order)
+
         # Build clean visual identifiers for the customer's billing invoice panel
         package_name = f"Custom Dataset Extraction ({scrape_request.chambers_count} Chamber Pack)"
         if scrape_request.chambers_count == 1:
@@ -358,7 +365,8 @@ def create_checkout_session(request, request_id):
             mode='payment',
             client_reference_id=request.user.id,
             metadata={
-                'chamber_request_id': scrape_request.id
+                'chamber_request_id': scrape_request.id,
+                'order_id': new_order.order_id
             },
             success_url=request.build_absolute_uri('/payment-success/'),
             cancel_url=request.build_absolute_uri('/payment-cancel/'),
@@ -445,18 +453,37 @@ def stripe_webhook(request):
         user_id = session.get('client_reference_id')
         metadata = session.get('metadata', {})
         chamber_request_id = metadata.get('chamber_request_id')
+        order_id = metadata.get('order_id')
         
-        # Case A: Handle incoming paid custom tiered requests
+        # 1. Handle incoming isolated item purchase matches via tracking orders
+        if order_id and user_id:
+            try:
+                order = Order.objects.get(order_id=order_id, user_id=user_id)
+                order.is_paid = True
+                order.save()
+
+                # Process specific item fulfillments inside UserPurchase boundary layout
+                for item in order.items.all():
+                    UserPurchase.objects.get_or_create(
+                        user_id=user_id,
+                        directory=item.directory,
+                        lead=item.lead,
+                        stripe_session_id=session.id
+                    )
+            except Order.DoesNotExist:
+                pass
+
+        # 2. Update tracking state on the ChamberRequest model
         if chamber_request_id:
             try:
                 scrape_req = ChamberRequest.objects.get(id=chamber_request_id)
-                scrape_req.status = 'PAID'
+                scrape_req.status = 'completed'  # Normalized string state matching STATUS_CHOICES
                 scrape_req.save()
             except ChamberRequest.DoesNotExist:
                 pass
         
-        # Case B: Handle legacy flat directory upgrades
-        elif user_id:
+        # 3. Handle legacy flat directory global upgrades
+        elif user_id and not order_id:
             try:
                 user = User.objects.get(id=user_id)
                 if hasattr(user, 'profile'):

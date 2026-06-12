@@ -113,6 +113,59 @@ class Profile(models.Model):
         return f"{self.user.username}'s Profile (Premium: {self.is_premium})"
 
 
+# --- New Strict Purchase & Access Control Isolation System ---
+
+class Order(models.Model):
+    """
+    Captures the snapshot of what a user wants to purchase BEFORE they go to Stripe.
+    Can hold 1, 5, or any arbitrary number of directory items or leads.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    order_id = models.CharField(max_length=100, unique=True, help_text="Unique tracking ID passed to Stripe metadata")
+    is_paid = models.BooleanField(default=False, db_index=True)
+    amount_paid = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Order {self.order_id} - User: {self.user.username} - Paid: {self.is_paid}"
+
+
+class OrderItem(models.Model):
+    """Maps specific items requested inside a single checkout session."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    # Link to directories or individual leads depending on how you plan to chunk purchases
+    directory = models.ForeignKey(ChamberDirectory, on_delete=models.CASCADE, null=True, blank=True)
+    lead = models.ForeignKey(ChamberLead, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        item_name = self.directory.name if self.directory else (self.lead.email if self.lead else "Unknown Item")
+        return f"Item for Order {self.order.order_id}: {item_name}"
+
+
+class UserPurchase(models.Model):
+    """
+    The source of truth access control wall. 
+    If a record doesn't exist here, the user cannot see it or download it.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
+    directory = models.ForeignKey(ChamberDirectory, on_delete=models.CASCADE, null=True, blank=True)
+    lead = models.ForeignKey(ChamberLead, on_delete=models.CASCADE, null=True, blank=True)
+    purchased_at = models.DateTimeField(auto_now_add=True)
+    stripe_session_id = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-purchased_at']
+        # Guarantees the same user doesn't get duplicate access records for the exact same asset
+        unique_together = [['user', 'directory'], ['user', 'lead']]
+
+    def __str__(self):
+        asset = self.directory.name if self.directory else (self.lead.email if self.lead else "Asset")
+        return f"{self.user.username} has active paid access to: {asset}"
+
+
 # --- Automatic Profile Creation Signals ---
 
 @receiver(post_save, sender=User)

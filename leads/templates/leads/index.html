@@ -246,6 +246,8 @@
                         
                         <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
                         
+                        <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
+                        
                         {% if request.user.is_staff %}
                             <a href="{% url 'blog:admin_dashboard' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid var(--accent-color);">
                                 ✍️ Blog Dashboard

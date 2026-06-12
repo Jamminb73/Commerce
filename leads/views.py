@@ -9,8 +9,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.utils.dateparse import parse_datetime
-from django.core.paginator import Paginator  # <-- Added Django's built-in Paginator
-from .models import ChamberLead
+from django.core.paginator import Paginator  
+from django.core.mail import send_mail  
+
+from .models import ChamberLead, ChamberDirectory, ChamberRequest
+from .forms import ChamberRequestForm  
 
 def landing_page(request):
     """
@@ -29,8 +32,101 @@ def landing_page(request):
         context['is_premium_member'] = request.user.profile.is_premium
         context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
 
-    # FIX: Explicitly namespace 'index.html' to 'leads/index.html'
     return render(request, 'leads/index.html', context)
+
+
+def request_custom_scrape(request):
+    """
+    Processes user submission requests for custom tiered data extraction batches.
+    Calculates value points dynamically from $9.99 up to scale multi-unit packs.
+    """
+    if request.method == 'POST':
+        form = ChamberRequestForm(request.POST)
+        if form.is_valid():
+            chamber_request = form.save(commit=False)
+            
+            # 1. Map dynamic cost structures based on chosen tier constraints
+            selected_count = int(form.cleaned_data.get('chambers_count', 1))
+            if selected_count == 1:
+                chamber_request.estimated_cost = 9.99
+                price_string = "$9.99"
+            elif selected_count == 5:
+                chamber_request.estimated_cost = 49.00
+                price_string = "$49.00"
+            elif selected_count == 10:
+                chamber_request.estimated_cost = 99.00
+                price_string = "$99.00"
+            else:
+                chamber_request.estimated_cost = 0.00  # Flagged for manual custom quote review
+                price_string = "Custom Quote ($10/ch)"
+
+            # Fallback to current authenticated user's email if field was left blank
+            if request.user.is_authenticated and not chamber_request.user_email:
+                chamber_request.user_email = request.user.email
+                
+            chamber_request.save()
+            
+            # 2. Automated Workspace Admin Notification Email Dispatch
+            try:
+                subject = f"[Scrape Request] Tier Level: {price_string} for {chamber_request.state}"
+                message = (
+                    f"New client dataset pipeline submission alert!\n\n"
+                    f"Plan Selection: {price_string} (Tier Target Count: {selected_count})\n"
+                    f"State Focus: {chamber_request.state}\n"
+                    f"Cities: {chamber_request.city_or_region}\n"
+                    f"Targets:\n{chamber_request.chamber_name}\n\n"
+                    f"URLs Provided:\n{chamber_request.chamber_url}\n\n"
+                    f"Client Email Contact: {chamber_request.user_email}\n"
+                )
+                send_mail(
+                    subject, message, settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMINS[0][1] if hasattr(settings, 'ADMINS') else settings.DEFAULT_FROM_EMAIL],
+                    fail_silently=True
+                )
+            except Exception:
+                pass
+
+            messages.success(
+                request, 
+                "Your custom scrape request has been successfully submitted! We are evaluating your targets."
+            )
+            return redirect('request_success')  # Points to your custom success template route layout
+    else:
+        initial_data = {}
+        if request.user.is_authenticated:
+            initial_data['user_email'] = request.user.email
+        form = ChamberRequestForm(initial=initial_data)
+
+    user_context = {
+        'is_authenticated_user': request.user.is_authenticated,
+        'user_email': request.user.email if request.user.is_authenticated else "",
+        'username': request.user.username if request.user.is_authenticated else "",
+        'is_premium_member': False,
+        'avatar_url': None,
+        'form': form,
+    }
+    
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        user_context['is_premium_member'] = request.user.profile.is_premium
+        user_context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
+        
+    return render(request, 'leads/request_form.html', user_context)
+
+
+def request_success_view(request):
+    """Simple confirmation wrapper passing core navigation status arrays."""
+    context = {
+        'is_authenticated_user': request.user.is_authenticated,
+        'user_email': request.user.email if request.user.is_authenticated else "",
+        'username': request.user.username if request.user.is_authenticated else "",
+        'is_premium_member': False,
+        'avatar_url': None
+    }
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        context['is_premium_member'] = request.user.profile.is_premium
+        context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
+        
+    return render(request, 'leads/request_success.html', context)
 
 
 def leads_list(request):
@@ -39,10 +135,8 @@ def leads_list(request):
     Premium users see clean, full unmasked granular fields.
     Guests and free users see 'Chamber Member' and masked emails.
     """
-    # 1. Pull base query set - Ordered consistently to prevent Postgres pagination record skipping
     raw_leads = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
     
-    # 2. Extract GET filter parameters from search bar controls
     search_query = request.GET.get('q', '').strip()
     chamber_filter = request.GET.get('chamber', '').strip()
 
@@ -52,12 +146,10 @@ def leads_list(request):
     if chamber_filter:
         raw_leads = raw_leads.filter(organization__icontains=chamber_filter) | raw_leads.filter(chamber__icontains=chamber_filter)
 
-    # 3. Compile unique chamber dropdown collections dynamically from the database fields
     chambers_list = list(ChamberLead.objects.values_list('organization', flat=True).distinct()) + \
                     list(ChamberLead.objects.values_list('chamber', flat=True).distinct())
     unique_chambers = sorted(list(set([c.strip() for c in chambers_list if c and c.lower() not in ['false', 'none', 'general']])))
 
-    # Unified Account Navigation Variables for your Profile Dropdown Menu Layout
     user_context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
@@ -113,7 +205,6 @@ def leads_list(request):
                 'is_locked': False  
             })
 
-        # CHUNK RESULTS: Set up 50 items per page pagination for premium users
         paginator = Paginator(safe_leads, 50)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
@@ -154,7 +245,6 @@ def leads_list(request):
             'is_locked': True  
         })
         
-    # CHUNK RESULTS: Set up 50 items per page pagination for free/guest users
     paginator = Paginator(masked_leads, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -173,11 +263,8 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            
             next_url = request.GET.get('next')
-            if next_url:
-                return redirect(next_url)
-            return redirect('leads_list')
+            return redirect(next_url) if next_url else redirect('leads_list')
         else:
             messages.error(request, "Invalid username or password.")
             return redirect('login')
@@ -194,13 +281,9 @@ def logout_view(request):
 def register_view(request):
     """Handles both rendering the registration form and creating new user accounts securely."""
     if request.method == 'POST':
-        # -------------------------------------------------------------
-        # ANTI-BOT HONEYPOT TRAP
-        # -------------------------------------------------------------
         honeypot = request.POST.get('hp_email', '')
         if honeypot:
             return redirect('login')
-        # -------------------------------------------------------------
 
         u_name = request.POST.get('username')
         email = request.POST.get('email')
@@ -208,15 +291,15 @@ def register_view(request):
 
         if not u_name or not email or not p_word:
             messages.error(request, "All form input fields are required.")
-            return render(request, 'register.html')
+            return render(request, 'leads/register.html')
 
         if User.objects.filter(username=u_name).exists():
             messages.error(request, "That username configuration has already been taken.")
-            return render(request, 'register.html')
+            return render(request, 'leads/register.html')
             
         if User.objects.filter(email=email).exists():
             messages.error(request, "An account matching that email address already exists.")
-            return render(request, 'register.html')
+            return render(request, 'leads/register.html')
 
         try:
             user = User.objects.create_user(username=u_name, email=email, password=p_word)
@@ -226,9 +309,9 @@ def register_view(request):
             
         except Exception as e:
             messages.error(request, f"An application registration database error occurred: {str(e)}")
-            return render(request, 'register.html')
+            return render(request, 'leads/register.html')
 
-    return render(request, 'register.html')
+    return render(request, 'leads/register.html')
 
 
 def create_checkout_session(request):
@@ -248,7 +331,7 @@ def create_checkout_session(request):
                             'currency': 'usd',
                             'product_data': {
                                 'name': 'CommerceSales Premium Access',
-                                'description': 'Full unmasked access to Georgia Chamber Lead directories.',
+                                'description': 'Full unmasked access to Chamber Lead directories nationwide.',
                             },
                             'unit_amount': 4900,  
                         },
@@ -335,18 +418,3 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
     except stripe.error.SignatureVerificationError as e:
         return HttpResponse(status=400)
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        user_id = session.get('client_reference_id')
-        
-        if user_id:
-            try:
-                user = User.objects.get(id=user_id)
-                if hasattr(user, 'profile'):
-                    user.profile.is_premium = True
-                    user.profile.save()
-            except User.DoesNotExist:
-                pass
-
-    return HttpResponse(status=200)

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center my-5 py-5" style="max-width: 600px;">
+    <div class="p-5 rounded-3 shadow bg-white">
+        <div class="text-success mb-4" style="font-size: 4rem;">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <h2 style="color: #0d233a; font-weight: 700;">Request Received!</h2>
+        <p class="lead my-4 text-secondary" style="font-size: 1.1rem;">
+            We are reviewing your target chamber directory's layout schema. We will reach out to your contact email with confirmation updates and Stripe verification links shortly.
+        </p>
+        <a href="{% url 'leads_list' %}" class="btn px-4 py-2 text-white" style="background-color: #0d233a; font-weight: 600; border-radius: 6px;">
+            Return to Leads Directory
+        </a>
+    </div>
+</div>
+{% endblock %}

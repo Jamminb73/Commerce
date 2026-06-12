@@ -3,15 +3,44 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+class ChamberDirectory(models.Model):
+    """
+    Represents a specific chamber asset nationwide. 
+    Allows bundling leads by state or city for future packages.
+    """
+    name = models.CharField(max_length=255, help_text="e.g., Austin Chamber of Commerce")
+    state = models.CharField(max_length=2, db_index=True, help_text="2-letter US state code (e.g., TX, FL, GA)")
+    city_or_region = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Austin")
+    directory_url = models.URLField(max_length=500, blank=True, null=True, help_text="The source URL scraped")
+    is_active = models.BooleanField(default=True, help_text="Controls visibility on the front-end market")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Chamber Directories"
+        ordering = ['state', 'name']
+
+    def __str__(self):
+        return f"[{self.state}] {self.name}"
+
+
 class ChamberLead(models.Model):
-    """Upgraded model holding high-fidelity scraped chamber leads."""
+    """Upgraded model holding high-fidelity scraped chamber leads nationwide."""
+    # Relationship to the nationwide parent directory
+    directory = models.ForeignKey(
+        ChamberDirectory, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='leads',
+        help_text="The nationwide chamber asset this lead belongs to"
+    )
+    
     # Historical field for fallback/backward compatibility
     name = models.CharField(max_length=255, blank=True, null=True)
     
     # New high-fidelity granular name tracking fields
     first_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
-    
     title = models.CharField(max_length=255, blank=True, null=True)
     
     # Historical short identifier field (e.g., 'MACOC Chamber')
@@ -31,10 +60,48 @@ class ChamberLead(models.Model):
         return None
 
     def __str__(self):
-        # Prioritize granular tracking strings, fall back to legacy name, default to placeholder
         display_name = f"{self.first_name} {self.last_name}".strip() or self.name or "Unknown Lead"
-        display_org = self.organization or self.chamber or "Unknown Chamber"
+        display_org = self.organization or self.chamber or (self.directory.name if self.directory else "Unknown Chamber")
         return f"{display_name} - {display_org}"
+
+
+class ChamberRequest(models.Model):
+    """Tracks custom nationwide user data pipeline requests based on flexible tiered volume limits."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('scraping', 'Scraping In Progress'),
+        ('completed', 'Completed & Live'),
+        ('rejected', 'Unfeasible/Requires Refund'),
+    ]
+
+    VOLUME_CHOICES = [
+        (1, 'Single Local Area / Chamber Target ($9.99)'),
+        (5, 'Regional Bundle Package (Up to 5 Areas) ($49.00)'),
+        (10, 'Expanded Regional Pack (Up to 10 Areas) ($99.00)'),
+        (20, 'Enterprise Multi-Region / Full State (Custom Quote - $10/ch)'),
+    ]
+
+    user_email = models.EmailField()
+    state = models.CharField(max_length=2, help_text="2-letter US state code (e.g., TX)")
+    city_or_region = models.CharField(max_length=255, help_text="e.g., Austin, Round Rock, Buda")
+    
+    # Upgraded fields to TextField so users can safely input multi-target listings without character clip errors
+    chamber_name = models.TextField(help_text="List the specific Chambers of Commerce (one per line or comma-separated)")
+    chamber_url = models.TextField(help_text="Provide the direct links showing their public online membership directory index layout")
+    
+    # Volume metrics and cost-tracking anchors
+    chambers_count = models.IntegerField(choices=VOLUME_CHOICES, default=1, help_text="The requested data batch sizing tier")
+    estimated_cost = models.DecimalField(max_digits=6, decimal_places=2, default=9.99, help_text="Calculated transaction price or quote evaluation benchmark")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Request Tier ({self.get_chambers_count_display()}): [{self.state}] by {self.user_email} - Status: {self.get_status_display()}"
 
 
 class Profile(models.Model):
@@ -57,6 +124,5 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     """Ensures the profile is updated whenever the User object updates."""
-    # Wrapped in a safe check to prevent race conditions during test fixture loading
     if hasattr(instance, 'profile'):
         instance.profile.save()

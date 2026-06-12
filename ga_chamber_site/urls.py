@@ -1,8 +1,8 @@
 from django.contrib import admin
-from django.urls import path, include  # <-- Added 'include' here so we can load your blog urls
-from django.contrib.sitemaps.views import sitemap  # Added for dynamic sitemap rendering
+from django.urls import path, include  
+from django.contrib.sitemaps.views import sitemap  
 
-from leads.sitemaps import StaticViewSitemap        # Imported your new sitemap class
+from leads.sitemaps import StaticViewSitemap        
 from leads.views import (
     landing_page,
     leads_list,       
@@ -13,9 +13,11 @@ from leads.views import (
     create_checkout_session,
     payment_success_view,
     payment_cancel_view,
-    manual_upgrade_test,     # <-- Imported your local test bypass hook
+    manual_upgrade_test,     
     stripe_webhook,
     stripe_customer_portal,  
+    request_custom_scrape,          # <-- Imported your new intake view
+    request_success_view,           # <-- Imported your new success view
 )
 
 # Dictionary mapping for the sitemap framework
@@ -37,7 +39,11 @@ urlpatterns = [
     path('', landing_page, name='home'),
     path('leads/', leads_list, name='leads_list'),  
     
-    # NEW: Secure Backend Blog App Router
+    # Custom $49 Scraping Requests System
+    path('request-scrape/', request_custom_scrape, name='request_custom_scrape'),
+    path('request-scrape/success/', request_success_view, name='request_custom_scrape_success'),
+    
+    # Secure Backend Blog App Router
     path('blog/', include('blog.urls')), 
     
     # Local Development Cheat Code Backdoor

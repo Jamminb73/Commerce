@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Custom Scrape | Premium Business Data</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-light: #ffffff;
+            --text-dark: #2d3748;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            margin: 0; 
+            color: var(--text-dark); 
+            background-color: #f4f6f9; 
+        }
+        
+        /* Navigation Styles */
+        nav {
+            background: var(--primary-bg);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-brand h2 {
+            color: white;
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-brand a {
+            text-decoration: none;
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* --- Profile Dropdown Layout Styles --- */
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-trigger {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .nav-avatar, .avatar-fallback {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+            box-sizing: border-box;
+            transition: transform 0.2s;
+        }
+
+        .avatar-fallback {
+            background-color: white;
+            color: var(--primary-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #ffffff;
+            min-width: 250px;
+            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            text-align: left;
+        }
+
+        .dropdown-header {
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .dropdown-header strong {
+            color: var(--primary-bg);
+            font-size: 0.95rem;
+        }
+
+        .user-email {
+            display: block;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 2px;
+            word-break: break-all;
+        }
+
+        .dropdown-content hr {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 0;
+        }
+
+        .menu-item {
+            color: var(--text-dark);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* --- Form Container & Card Styles --- */
+        .form-wrapper {
+            max-width: 650px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        .form-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .form-card h2 {
+            color: var(--primary-bg);
+            font-weight: 700;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+            letter-spacing: -0.5px;
+        }
+
+        .form-card p {
+            color: #718096;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #334155;
+            font-size: 0.9rem;
+        }
+
+        /* Input Elements & Select Textareas */
+        .form-card input[type="text"],
+        .form-card input[type="email"],
+        .form-card select,
+        .form-card textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            background-color: #ffffff;
+            font-family: inherit;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-card select {
+            height: 48px;
+        }
+
+        .form-card input:focus, 
+        .form-card select:focus, 
+        .form-card textarea:focus {
+            outline: none;
+            border-color: var(--primary-bg);
+            box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
+        }
+
+        /* Grid Row Layout Alignment */
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .col-state { width: 35%; }
+        .col-city { width: 65%; }
+
+        .form-help {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 6px;
+        }
+
+        .text-danger {
+            color: #dc2626;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        /* Interactive Pricing Banner */
+        .price-badge {
+            background-color: rgba(243, 156, 18, 0.1);
+            color: #d97706;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid rgba(243, 156, 18, 0.2);
+            font-size: 1.05rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-brand">
+            <a href="{% url 'home' %}"><h2>GA Commerce Leads</h2></a>
+        </div>
+        <div class="nav-container">
+            {% if is_authenticated_user %}
+                <div class="profile-dropdown">
+                    <button class="dropdown-trigger" onclick="toggleDropdown(event)">
+                        {% if avatar_url %}
+                            <img src="{{ avatar_url }}" alt="Profile" class="nav-avatar">
+                        {% else %}
+                            <div class="avatar-fallback">{{ username|slice:":2"|upper }}</div>
+                        {% endif %}
+                    </button>
+                    
+                    <div id="profileMenu" class="dropdown-content">
+                        <div class="dropdown-header">
+                            <strong>{{ username }}</strong>
+                            <span class="user-email">{{ user_email }}</span>
+                        </div>
+                        <hr>
+                        
+                        <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
+                        <a href="{% url 'request_custom_scrape' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">🎯 Request Custom Scrape</a>
+                        
+                        {% if request.user.is_staff %}
+                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item">✍️ Blog Dashboard</a>
+                        {% endif %}
+                        
+                        <hr>
+                        <a href="{% url 'logout' %}" class="menu-item" style="color: #718096;">🚪 Logout</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="form-wrapper">
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div style="padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500; background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-card">
+            <h2>Request Custom Target Scrape</h2>
+            <p>Specify your territory volume pack and layout configuration rules below. We extract, clean, and map the targets straight to your lead pipeline workflow.</p>
+
+            <div class="price-badge" id="live-price-indicator">
+                Selected Plan Pricing: $9.99 flat rate
+            </div>
+
+            <form method="POST" novalidate>
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label">Select Scrape Volume Tier Scope</label>
+                    {{ form.chambers_count }}
+                    {% if form.chambers_count.errors %}
+                        <div class="text-danger">{{ form.chambers_count.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Contact Email Address</label>
+                    {{ form.user_email }}
+                    {% if form.user_email.errors %}
+                        <div class="text-danger">{{ form.user_email.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-state">
+                        <label class="form-label">State Focus</label>
+                        {{ form.state }}
+                        {% if form.state.errors %}
+                            <div class="text-danger">{{ form.state.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group col-city">
+                        <label class="form-label">City or Territory Regions</label>
+                        {{ form.city_or_region }}
+                        {% if form.city_or_region.errors %}
+                            <div class="text-danger">{{ form.city_or_region.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Chamber of Commerce Target Names</label>
+                    {{ form.chamber_name }}
+                    {% if form.chamber_name.errors %}
+                        <div class="text-danger">{{ form.chamber_name.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Chamber Membership Directory URL Links</label>
+                    {{ form.chamber_url }}
+                    <div class="form-help" id="url-help-text">Paste the direct link showing their public online membership directory index layout.</div>
+                    {% if form.chamber_url.errors %}
+                        <div class="text-danger">{{ form.chamber_url.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <div style="margin-top: 32px; text-align: center;">
+                    {% include "leads/components/base_button.html" with button_text="Submit Request & Calculate Scope" button_type="submit" button_classes="w-100" %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const volumeSelector = document.getElementById('id_chambers_count');
+        const priceIndicator = document.getElementById('live-price-indicator');
+        const urlHelp = document.getElementById('url-help-text');
+
+        if (volumeSelector) {
+            volumeSelector.addEventListener('change', function() {
+                const val = parseInt(this.value);
+                if (val === 1) {
+                    priceIndicator.innerText = "Selected Plan Pricing: $9.99 flat rate";
+                    urlHelp.innerText = "Paste the direct link showing their public online membership directory index layout.";
+                } else if (val === 5) {
+                    priceIndicator.innerText = "Selected Plan Pricing: $49.00 Regional Bundle Package";
+                    urlHelp.innerText = "Provide up to 5 individual directory source URLs (one per line).";
+                } else if (val === 10) {
+                    priceIndicator.innerText = "Selected Plan Pricing: $99.00 Expanded Regional Pack";
+                    urlHelp.innerText = "Provide up to 10 individual directory source URLs (one per line).";
+                } else {
+                    priceIndicator.innerText = "Selected Plan Pricing: Custom Enterprise Quote ($10.00 / chamber)";
+                    urlHelp.innerText = "Paste as many target directory URLs as needed. We will count them and email you a precise invoice link.";
+                }
+            });
+        }
+
+        function toggleDropdown(event) {
+            event.stopPropagation();
+            var menu = document.getElementById("profileMenu");
+            if (menu.style.display === "block") {
+                menu.style.display = "none";
+            } else {
+                menu.style.display = "block";
+            }
+        }
+
+        window.onclick = function(event) {
+            var menu = document.getElementById("profileMenu");
+            if (menu && menu.style.display === "block") {
+                if (!event.target.closest('.profile-dropdown')) {
+                    menu.style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>

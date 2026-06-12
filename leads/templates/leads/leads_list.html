@@ -130,6 +130,7 @@
             margin-top: 10px;
             border: 1px solid #e2e8f0;
             overflow: hidden;
+            text-align: left;
         }
 
         .dropdown-header {
@@ -205,7 +206,7 @@
             color: #718096 !important;
         }
 
-        /* --- Structural classes mapping to base button styles --- */
+        /* --- Button Classes Styles --- */
         .btn-export {
             background: #38a169;
             color: white;
@@ -340,7 +341,7 @@
             transform: translateY(-1px);
         }
 
-        /* --- Frontend Pagination Styling Rules --- */
+        /* --- Pagination Layout Buttons --- */
         .btn-pagination {
             text-decoration: none;
             color: var(--primary-bg);
@@ -384,6 +385,12 @@
                         <hr>
                         
                         <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
+                        <a href="{% url 'leads_list' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">📋 Go to Leads Page</a>
+                        <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
+                        
+                        {% if request.user.is_staff %}
+                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item">✍️ Blog Dashboard</a>
+                        {% endif %}
                         
                         {% if is_premium_member %}
                             <a href="{% url 'stripe_customer_portal' %}" class="menu-item text-warning">💳 Cancel Subscription</a>
@@ -480,9 +487,16 @@
         </div>
     </div>
 
-    <div class="request-box-container" style="margin-top: 40px; padding: 30px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 12px; text-align: center;">
-        <h3 style="color: var(--primary-bg); margin-top: 0; margin-bottom: 8px; font-size: 1.3rem; font-weight: 700;">Don't see the city or chamber you need?</h3>
-        <p style="color: #718096; margin-bottom: 0; font-size: 0.95rem; font-weight: 500;">We are building an on-demand request system so you can tell us which Georgia directories to scrape next!</p>
+    <div class="card border-0 shadow-sm mt-5 text-center p-4" style="background: linear-gradient(135deg, #1a2a6c 0%, #273c75 100%); border-radius: 12px; margin-top: 40px; margin-bottom: 20px; box-shadow: var(--card-shadow);">
+        <div class="card-body text-white" style="padding: 20px; text-align: center;">
+            <h3 style="font-weight: 700; margin-top: 0; margin-bottom: 0.5rem; color: #ffffff; font-size: 1.6rem; letter-spacing: -0.5px;">Don't see the city or chamber you need?</h3>
+            <p class="opacity-75 mb-4" style="font-size: 1.05rem; max-width: 630px; margin-left: auto; margin-right: auto; margin-bottom: 24px; color: rgba(255,255,255,0.85);">
+                We build custom lead pipelines nationwide. Specify your target directory requirements, and we will extract, clean, and deliver the verified contacts straight to your dashboard workflow starting at just $9.99.
+            </p>
+            <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none; display: inline-block;">
+                {% include "leads/components/base_button.html" with button_text="Request Custom Scrape ($9.99+)" button_classes="text-white" %}
+            </a>
+        </div>
     </div>
 </div>
 

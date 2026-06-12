@@ -16,8 +16,8 @@ from leads.views import (
     manual_upgrade_test,     
     stripe_webhook,
     stripe_customer_portal,  
-    request_custom_scrape,          # <-- Imported your new intake view
-    request_success_view,           # <-- Imported your new success view
+    request_custom_scrape,          # Imported your intake view
+    request_success_view,           # Imported your success view
 )
 
 # Dictionary mapping for the sitemap framework
@@ -39,9 +39,9 @@ urlpatterns = [
     path('', landing_page, name='home'),
     path('leads/', leads_list, name='leads_list'),  
     
-    # Custom $49 Scraping Requests System
+    # Custom Dynamic Scraping Requests System
     path('request-scrape/', request_custom_scrape, name='request_custom_scrape'),
-    path('request-scrape/success/', request_success_view, name='request_custom_scrape_success'),
+    path('request-scrape/success/', request_success_view, name='request_success'),
     
     # Secure Backend Blog App Router
     path('blog/', include('blog.urls')), 
@@ -49,9 +49,9 @@ urlpatterns = [
     # Local Development Cheat Code Backdoor
     path('manual-upgrade/', manual_upgrade_test, name='manual_upgrade'),
     
-    # Stripe Checkout & Payment Flows
+    # Stripe Checkout & Payment Flows (Updated with dynamic request_id parameter)
     path('purchase/', purchase_view, name='purchase'),
-    path('create-checkout-session/', create_checkout_session, name='create_checkout_session'),
+    path('create-checkout-session/<int:request_id>/', create_checkout_session, name='create_checkout_session'),
     path('payment-success/', payment_success_view, name='payment_success'),
     path('payment-cancel/', payment_cancel_view, name='payment_cancel'),
     

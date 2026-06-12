@@ -88,9 +88,9 @@ def request_custom_scrape(request):
 
             messages.success(
                 request, 
-                "Your custom scrape request has been successfully submitted! We are evaluating your targets."
+                "Your custom scrape request has been successfully logged! Redirecting to secure checkout..."
             )
-            return redirect('request_success')  # Points to your custom success template route layout
+            return redirect('create_checkout_session', request_id=chamber_request.id)
     else:
         initial_data = {}
         if request.user.is_authenticated:
@@ -314,40 +314,61 @@ def register_view(request):
     return render(request, 'leads/register.html')
 
 
-def create_checkout_session(request):
-    """Generates a Stripe Checkout Session and redirects the user to payment."""
+def create_checkout_session(request, request_id):
+    """
+    Dynamically generates a Stripe Checkout Session matching the specific 
+    cost tier recorded on the incoming ChamberRequest instance.
+    """
     if not request.user.is_authenticated:
         return redirect('login')
 
-    if request.method == 'POST':
-        try:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        scrape_request = ChamberRequest.objects.get(id=request_id)
+        
+        # Security Boundary: Ensure users can only pay for their own requests
+        if scrape_request.user_email != request.user.email:
+            messages.error(request, "Unauthorized request checkout attempt.")
+            return redirect('leads_list')
             
-            checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[
-                    {
-                        'price_data': {
-                            'currency': 'usd',
-                            'product_data': {
-                                'name': 'CommerceSales Premium Access',
-                                'description': 'Full unmasked access to Chamber Lead directories nationwide.',
-                            },
-                            'unit_amount': 4900,  
+        # Convert cost database decimal directly into Stripe integer cents ($9.99 -> 999)
+        amount_in_cents = int(float(scrape_request.estimated_cost) * 100)
+        
+        # Build clean visual identifiers for the customer's billing invoice panel
+        package_name = f"Custom Dataset Extraction ({scrape_request.chambers_count} Chamber Pack)"
+        if scrape_request.chambers_count == 1:
+            package_name = "Single Target Chamber Dataset Extraction"
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[
+                {
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': package_name,
+                            'description': f"Target Focus: {scrape_request.city_or_region}, {scrape_request.state}. Scope targets: {scrape_request.chamber_name}",
                         },
-                        'quantity': 1,
+                        'unit_amount': amount_in_cents,  
                     },
-                ],
-                mode='payment',
-                client_reference_id=request.user.id,
-                success_url=request.build_absolute_uri('/payment-success/'),
-                cancel_url=request.build_absolute_uri('/payment-cancel/'),
-            )
-            return redirect(checkout_session.url, code=303)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-            
-    return redirect('purchase')
+                    'quantity': 1,
+                },
+            ],
+            mode='payment',
+            client_reference_id=request.user.id,
+            metadata={
+                'chamber_request_id': scrape_request.id
+            },
+            success_url=request.build_absolute_uri('/payment-success/'),
+            cancel_url=request.build_absolute_uri('/payment-cancel/'),
+        )
+        return redirect(checkout_session.url, code=303)
+    except ChamberRequest.DoesNotExist:
+        messages.error(request, "Target workspace request dataset not located.")
+        return redirect('leads_list')
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -418,3 +439,30 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
     except stripe.error.SignatureVerificationError as e:
         return HttpResponse(status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        user_id = session.get('client_reference_id')
+        metadata = session.get('metadata', {})
+        chamber_request_id = metadata.get('chamber_request_id')
+        
+        # Case A: Handle incoming paid custom tiered requests
+        if chamber_request_id:
+            try:
+                scrape_req = ChamberRequest.objects.get(id=chamber_request_id)
+                scrape_req.status = 'PAID'
+                scrape_req.save()
+            except ChamberRequest.DoesNotExist:
+                pass
+        
+        # Case B: Handle legacy flat directory upgrades
+        elif user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                if hasattr(user, 'profile'):
+                    user.profile.is_premium = True
+                    user.profile.save()
+            except User.DoesNotExist:
+                pass
+
+    return HttpResponse(status=200)

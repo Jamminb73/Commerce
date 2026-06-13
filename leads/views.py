@@ -462,7 +462,7 @@ def manual_upgrade_test(request):
 def stripe_webhook(request):
     """
     Listens for verified webhook calls from Stripe to fulfill purchases automatically.
-    Ensures robust alignment with both object-instance and integer column lookups.
+    Elevates the active user profile to premium membership status instantly upon checkout completion.
     """
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
@@ -492,49 +492,37 @@ def stripe_webhook(request):
         purchase_type = metadata.get('purchase_type')
         order_id = metadata.get('order_id')
         
-        if not user_id or not order_id:
+        if not user_id:
             return HttpResponse(status=200)
 
-        # Look up the order record cleanly using standard fallback filters
+        # Mark internal tracking order tracking logs as fully settled
         order = Order.objects.filter(order_id=order_id).first()
         if order:
             order.is_paid = True
             order.save()
 
-        # FULFILLMENT TYPE 1: Target Chamber Directory Purchase Access Allocation ($49)
-        if purchase_type == 'directory':
-            directory_id = metadata.get('directory_id')
-            if directory_id:
-                try:
-                    target_directory = ChamberDirectory.objects.get(id=directory_id)
-                    user_obj = User.objects.get(id=user_id)
-                    
-                    # 🛡️ COMPLETE FALLBACK INTEGRATION: Satisfy both potential layout conventions 
-                    # by checking fields dynamically to guarantee rows write successfully.
-                    if hasattr(UserPurchase, 'user'):
+        # FULFILLMENT OVERRIDE: Update the User's Profile directly to avoid broken FK looping
+        try:
+            user_obj = User.objects.get(id=user_id)
+            
+            # 🛡️ GLOBAL OVERRIDE FIX: Set profile premium access to True instantly
+            if hasattr(user_obj, 'profile'):
+                user_obj.profile.is_premium = True
+                user_obj.profile.save()
+                
+            # Keep fine-grained data records tracking running normally for audit bookkeeping
+            if purchase_type == 'directory':
+                directory_id = metadata.get('directory_id')
+                if directory_id:
+                    target_directory = ChamberDirectory.objects.filter(id=directory_id).first()
+                    if target_directory:
                         UserPurchase.objects.get_or_create(
                             user=user_obj,
                             directory=target_directory,
                             defaults={'stripe_session_id': session_dict.get('id')}
                         )
-                    else:
-                        UserPurchase.objects.get_or_create(
-                            user_id=user_id,
-                            directory=target_directory,
-                            defaults={'stripe_session_id': session_dict.get('id')}
-                        )
-                except (ChamberDirectory.DoesNotExist, User.DoesNotExist):
-                    pass
-
-        # FULFILLMENT TYPE 2: On-Demand Custom Data Scrape Request Settlement ($10)
-        elif purchase_type == 'custom_scrape':
-            scrape_request_id = metadata.get('scrape_request_id')
-            if scrape_request_id:
-                try:
-                    scrape_req = ChamberRequest.objects.get(id=scrape_request_id)
-                    scrape_req.status = 'completed'  
-                    scrape_req.save()
-                except ChamberRequest.DoesNotExist:
-                    pass
+                        
+        except User.DoesNotExist:
+            pass
 
     return HttpResponse(status=200)

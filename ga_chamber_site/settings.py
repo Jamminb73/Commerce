@@ -130,12 +130,14 @@ SITE_ID = 1
 
 
 # ==============================================================================
-# LOCAL SETTINGS IMPORT
+# ABSOLUTE LOCAL SETTINGS IMPORT FOR PRODUCTION
 # ==============================================================================
-# This looks for local_settings.py on your machine to load database, keys, and 
-# debug settings. Because local_settings.py is in your .gitignore, it won't 
-# be pushed to GitHub, keeping your passwords safe.
+# Forces Python to look inside the inner project directory module explicitly 
+# to ensure Gunicorn finds the file layout regardless of execution context path.
 try:
-    from .local_settings import *
+    from ga_chamber_site.local_settings import *
 except ImportError:
-    pass
+    try:
+        from .local_settings import *
+    except ImportError:
+        pass

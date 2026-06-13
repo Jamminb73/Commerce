@@ -303,10 +303,6 @@ def create_checkout_session(request, request_id):
     """
     Unified Stripe Checkout Engine. 
     Variable signature matches `<int:request_id>` explicitly to prevent URL routing parameter panic.
-    - Legacy / Fallback Upgrade (request_id == 0): Unlocks the first available directory row inside ChamberDirectory 
-      to prevent giving away the farm or breaking transactions via global flags.
-    - Chamber Directory Purchase (request_id > 0): $49.00 (Full directory isolation mapping)
-    - Custom Scrape Request (Fallback): $10.00 (Single custom pipeline generation task)
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -315,7 +311,6 @@ def create_checkout_session(request, request_id):
         stripe.api_key = settings.STRIPE_SECRET_KEY
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
 
-        # PATHWAY A: Safely handle legacy 0 link clicks to automatically unlock the first real active directory
         if request_id == 0:
             first_directory = ChamberDirectory.objects.filter(is_active=True).first()
             if first_directory:
@@ -324,7 +319,6 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "No active chamber directories are configured for acquisition at this time.")
                 return redirect('leads_list')
 
-        # PATHWAY B: Standard lookup for a specific Chamber Directory asset ($49.00)
         try:
             target_directory = ChamberDirectory.objects.get(id=request_id)
             package_name = f"Premium Access: {target_directory.name} Directory"
@@ -345,11 +339,9 @@ def create_checkout_session(request, request_id):
                 'order_id': new_order.order_id
             }
 
-        # PATHWAY C: Fallback check to see if request_id matches a Custom Scrape Request ($10.00)
         except ChamberDirectory.DoesNotExist:
             scrape_request = ChamberRequest.objects.get(id=request_id)
             
-            # Security Boundary Check
             if scrape_request.user_email != request.user.email:
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
@@ -488,7 +480,7 @@ def stripe_webhook(request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         
-        # 🛡️ FIX: Safe cast string user_id from Stripe to an integer so PostgreSQL can process it
+        # Safe cast string user_id from Stripe to an integer so PostgreSQL can process it
         raw_user_id = session.get('client_reference_id')
         try:
             user_id = int(raw_user_id) if raw_user_id else None
@@ -502,9 +494,9 @@ def stripe_webhook(request):
         if not user_id or not order_id:
             return HttpResponse(status=200)
 
-        # Securely mark the internal tracking order snapshot as fully paid
+        # 🛡️ FIX: Query the Foreign Key target by referencing the direct field relationship
         try:
-            order = Order.objects.get(order_id=order_id, user_id=user_id)
+            order = Order.objects.get(order_id=order_id, user=user_id)
             order.is_paid = True
             order.save()
         except Order.DoesNotExist:

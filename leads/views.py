@@ -432,10 +432,10 @@ def purchase_view(request):
     return render(request, 'leads/purchase.html', context)
 
 def payment_success_view(request):
-    return render(request, 'payment_success.html')
+    return render(request, 'leads/payment_success.html')
 
 def payment_cancel_view(request):
-    return render(request, 'cancel.html')
+    return render(request, 'leads/cancel.html')
 
 
 def manual_upgrade_test(request):

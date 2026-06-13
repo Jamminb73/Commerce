@@ -39,27 +39,16 @@ def landing_page(request):
 def request_custom_scrape(request):
     """
     Processes user submission requests for custom tiered data extraction batches.
-    Calculates value points dynamically from $9.99 up to scale multi-unit packs.
+    Anchored cleanly to our primary entry-level price point of $49.00.
     """
     if request.method == 'POST':
         form = ChamberRequestForm(request.POST)
         if form.is_valid():
             chamber_request = form.save(commit=False)
             
-            # 1. Map dynamic cost structures based on chosen tier constraints
-            selected_count = int(form.cleaned_data.get('chambers_count', 1))
-            if selected_count == 1:
-                chamber_request.estimated_cost = 9.99
-                price_string = "$9.99"
-            elif selected_count == 5:
-                chamber_request.estimated_cost = 49.00
-                price_string = "$49.00"
-            elif selected_count == 10:
-                chamber_request.estimated_cost = 99.00
-                price_string = "$99.00"
-            else:
-                chamber_request.estimated_cost = 0.00  # Flagged for manual custom quote review
-                price_string = "Custom Quote ($10/ch)"
+            # Align database parameters explicitly with our verified $49 pricing entry boundary
+            chamber_request.estimated_cost = 49.00
+            price_string = "$49.00"
 
             # Fallback to current authenticated user's email if field was left blank
             if request.user.is_authenticated and not chamber_request.user_email:
@@ -67,16 +56,14 @@ def request_custom_scrape(request):
                 
             chamber_request.save()
             
-            # 2. Automated Workspace Admin Notification Email Dispatch
+            # Automated Workspace Admin Notification Email Dispatch
             try:
-                subject = f"[Scrape Request] Tier Level: {price_string} for {chamber_request.state}"
+                subject = f"[Scrape Request] New Order Tier Level: {price_string}"
                 message = (
                     f"New client dataset pipeline submission alert!\n\n"
-                    f"Plan Selection: {price_string} (Tier Target Count: {selected_count})\n"
-                    f"State Focus: {chamber_request.state}\n"
-                    f"Cities: {chamber_request.city_or_region}\n"
-                    f"Targets:\n{chamber_request.chamber_name}\n\n"
-                    f"URLs Provided:\n{chamber_request.chamber_url}\n\n"
+                    f"Plan Selection: {price_string}\n"
+                    f"Target Chamber Name: {chamber_request.chamber_name}\n"
+                    f"URL Provided:\n{chamber_request.target_url}\n\n"
                     f"Client Email Contact: {chamber_request.user_email}\n"
                 )
                 send_mail(
@@ -311,7 +298,7 @@ def register_view(request):
 def create_checkout_session(request, request_id):
     """
     Dynamically generates a Stripe Checkout Session matching the specific 
-    cost tier recorded on the incoming ChamberRequest instance, mapping an internal Order tracking object.
+    $49 entry point cost on the incoming ChamberRequest instance.
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -337,13 +324,10 @@ def create_checkout_session(request, request_id):
         )
         
         # Map this order explicitly to the scrape request via OrderItem
-        # Note: If your scrapers fulfill targets at the ChamberDirectory level, you can later attach directory=here
         OrderItem.objects.create(order=new_order)
 
-        # Build clean visual identifiers for the customer's billing invoice panel
-        package_name = f"Custom Dataset Extraction ({scrape_request.chambers_count} Chamber Pack)"
-        if scrape_request.chambers_count == 1:
-            package_name = "Single Target Chamber Dataset Extraction"
+        # Build clean visual identifiers using your real model's field rules
+        package_name = "Premium Custom Chamber Dataset Extraction"
 
         stripe.api_key = settings.STRIPE_SECRET_KEY
         
@@ -355,7 +339,7 @@ def create_checkout_session(request, request_id):
                         'currency': 'usd',
                         'product_data': {
                             'name': package_name,
-                            'description': f"Target Focus: {scrape_request.city_or_region}, {scrape_request.state}. Scope targets: {scrape_request.chamber_name}",
+                            'description': f"Target Focus: {scrape_request.chamber_name}. Scope Target URL: {scrape_request.target_url}",
                         },
                         'unit_amount': amount_in_cents,  
                     },
@@ -414,7 +398,21 @@ def stripe_customer_portal(request):
 # ==========================================
 
 def purchase_view(request):
-    return render(request, 'purchase.html')
+    """Renders the entry-level premium access information page with sticky nav context arrays."""
+    context = {
+        'is_authenticated_user': request.user.is_authenticated,
+        'user_email': request.user.email if request.user.is_authenticated else "",
+        'username': request.user.username if request.user.is_authenticated else "",
+        'is_premium_member': False,
+        'avatar_url': None
+    }
+    
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        context['is_premium_member'] = request.user.profile.is_premium
+        context['avatar_url'] = getattr(request.user.profile, 'avatar_url', None)
+
+    # FIXED: Direct namespace path to clear out Server Error (500)
+    return render(request, 'leads/purchase.html', context)
 
 def payment_success_view(request):
     return render(request, 'payment_success.html')

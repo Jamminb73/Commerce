@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upgrade to Premium | GA Commerce Leads</title>
+    <title>Upgrade to Premium | Local Commerce Leads</title>
     <style>
         :root {
             --primary-bg: #1a2a6c;
@@ -114,11 +114,11 @@
         <ul class="features">
             <li>Full unmasked names & titles</li>
             <li>Verified email endpoints</li>
-            <li>All Georgia Chamber variations</li>
+            <li>All Chamber variations</li>
             <li>CSV export capabilities</li>
         </ul>
 
-        <form action="{% url 'create_checkout_session' %}" method="POST">
+        <form action="{% url 'create_checkout_session' request_id=0 %}" method="POST">
             {% csrf_token %}
             <button type="submit" class="btn-purchase">Upgrade via Stripe</button>
         </form>

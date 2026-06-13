@@ -399,7 +399,7 @@
                                 <span>🔒 Premium Directory Access</span>
                                 <span class="badge-upgrade">Locked</span>
                             </div>
-                            <a href="{% url 'purchase' %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
+                            <a href="{% url 'create_checkout_session' request_id=0 %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
                         {% endif %}
                         
                         <hr>
@@ -422,7 +422,7 @@
                 {% include "leads/components/base_button.html" with button_text="📥 Export New Leads to CSV" button_classes="btn-export" %}
             </a>
         {% else %}
-            <a href="{% url 'purchase' %}" style="text-decoration: none;">
+            <a href="{% url 'create_checkout_session' request_id=0 %}" style="text-decoration: none;">
                 {% include "leads/components/base_button.html" with button_text="🔒 Export to CRM (Premium Only)" button_classes="btn-export-locked" %}
             </a>
         {% endif %}
@@ -452,7 +452,7 @@
                             <td><span class="badge-chamber">{{ lead.chamber }}</span></td>
                             <td>
                                 <span class="email-cell" style="color: #a0aec0;"><span class="email-icon" style="color:#cbd5e0">✉</span> {{ lead.email }}</span> 
-                                <a href="{% url 'purchase' %}" class="upgrade-link">[UPGRADE]</a>
+                                <a href="{% url 'create_checkout_session' request_id=lead.directory_id %}" class="upgrade-link">[UPGRADE]</a>
                             </td>
                         {% endif %}
                     </tr>

@@ -487,9 +487,15 @@ def stripe_webhook(request):
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        user_id = session.get('client_reference_id')
-        metadata = session.get('metadata', {})
         
+        # 🛡️ FIX: Safe cast string user_id from Stripe to an integer so PostgreSQL can process it
+        raw_user_id = session.get('client_reference_id')
+        try:
+            user_id = int(raw_user_id) if raw_user_id else None
+        except ValueError:
+            user_id = None
+            
+        metadata = session.get('metadata', {})
         purchase_type = metadata.get('purchase_type')
         order_id = metadata.get('order_id')
         

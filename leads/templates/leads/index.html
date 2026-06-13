@@ -232,7 +232,6 @@
             
             {% if request.user.is_staff %}
                 <a href="{% url 'admin:index' %}" 
-                   target="_blank" 
                    style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;"
                    onmouseover="this.style.backgroundColor='#dc2626'"
                    onmouseout="this.style.backgroundColor='#ef4444'">
@@ -266,7 +265,7 @@
                             <a href="{% url 'admin:index' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #ef4444; font-weight: 600;">
                                 🛠️ Native Django Tables
                             </a>
-                            <a href="/admin/blog/post/add/" target="_blank" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
+                            <a href="/admin/blog/post/add/" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
                                 ✍️ Create New Blog Post
                             </a>
                         {% endif %}

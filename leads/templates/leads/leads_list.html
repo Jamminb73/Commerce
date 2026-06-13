@@ -399,7 +399,7 @@
                                 <span>🔒 Premium Directory Access</span>
                                 <span class="badge-upgrade">Locked</span>
                             </div>
-                            <a href="{% url 'create_checkout_session' request_id=0 %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
+                            <a href="/create-checkout-session/0/" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
                         {% endif %}
                         
                         <hr>
@@ -422,7 +422,7 @@
                 {% include "leads/components/base_button.html" with button_text="📥 Export New Leads to CSV" button_classes="btn-export" %}
             </a>
         {% else %}
-            <a href="{% url 'create_checkout_session' request_id=0 %}" style="text-decoration: none;">
+            <a href="/create-checkout-session/0/" style="text-decoration: none;">
                 {% include "leads/components/base_button.html" with button_text="🔒 Export to CRM (Premium Only)" button_classes="btn-export-locked" %}
             </a>
         {% endif %}
@@ -452,7 +452,7 @@
                             <td><span class="badge-chamber">{{ lead.chamber }}</span></td>
                             <td>
                                 <span class="email-cell" style="color: #a0aec0;"><span class="email-icon" style="color:#cbd5e0">✉</span> {{ lead.email }}</span> 
-                                <a href="{% url 'create_checkout_session' request_id=lead.directory_id %}" class="upgrade-link">[UPGRADE]</a>
+                                <a href="/create-checkout-session/{{ lead.directory_id }}/" class="upgrade-link">[UPGRADE]</a>
                             </td>
                         {% endif %}
                     </tr>
@@ -491,10 +491,10 @@
         <div class="card-body text-white" style="padding: 20px; text-align: center;">
             <h3 style="font-weight: 700; margin-top: 0; margin-bottom: 0.5rem; color: #ffffff; font-size: 1.6rem; letter-spacing: -0.5px;">Don't see the city or chamber you need?</h3>
             <p class="opacity-75 mb-4" style="font-size: 1.05rem; max-width: 630px; margin-left: auto; margin-right: auto; margin-bottom: 24px; color: rgba(255,255,255,0.85);">
-                We build custom lead pipelines nationwide. Specify your target directory requirements, and we will extract, clean, and deliver the verified contacts straight to your dashboard workflow starting at just $9.99.
+                We build custom lead pipelines nationwide. Specify your target directory requirements, and we will extract, clean, and deliver the verified contacts straight to your dashboard workflow starting at just $10.00.
             </p>
             <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none; display: inline-block;">
-                {% include "leads/components/base_button.html" with button_text="Request Custom Scrape ($9.99+)" button_classes="text-white" %}
+                {% include "leads/components/base_button.html" with button_text="Request Custom Scrape ($10.00)" button_classes="text-white" %}
             </a>
         </div>
     </div>

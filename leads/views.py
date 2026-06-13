@@ -78,7 +78,7 @@ def request_custom_scrape(request):
                 request, 
                 "Your custom scrape request has been successfully logged! Redirecting to secure checkout..."
             )
-            return redirect('create_checkout_session', target_id=chamber_request.id)
+            return redirect('create_checkout_session', request_id=chamber_request.id)
     else:
         initial_data = {}
         if request.user.is_authenticated:
@@ -295,11 +295,13 @@ def register_view(request):
     return render(request, 'leads/register.html')
 
 
-def create_checkout_session(request, target_id):
+def create_checkout_session(request, request_id):
     """
     Unified Stripe Checkout Engine. 
-    - Chamber Directory Purchase: $49.00 (Full regional directory database access)
-    - Custom Scrape Request: $10.00 (Single custom on-demand scrape task package)
+    Variable signature matches `<int:request_id>` explicitly to prevent URL routing parameter panic.
+    - Legacy / Default Purchase (request_id == 0): $49.00 General Entry-Level Product Plan
+    - Chamber Directory Purchase (request_id > 0): $49.00 (Full database unlock mapping)
+    - Custom Scrape Request (Fallback): $10.00 (Single custom pipeline generation task)
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -308,12 +310,11 @@ def create_checkout_session(request, target_id):
         stripe.api_key = settings.STRIPE_SECRET_KEY
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
 
-        # PATHWAY A: Try looking up target_id as an existing Chamber Directory ($49.00)
-        try:
-            target_directory = ChamberDirectory.objects.get(id=target_id)
-            package_name = f"Premium Access: {target_directory.name} Directory"
-            package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
-            amount_in_cents = 4900  
+        # PATHWAY A: Intercept legacy hardcoded 0 links to prevent 500 database crashes
+        if request_id == 0:
+            package_name = "Chamber Pipeline Premium Directory Access"
+            package_description = "Unlocks entry-level full data views and CSV directory downloads."
+            amount_in_cents = 4900  # $49.00 default primary checkout rate
             
             new_order = Order.objects.create(
                 user=request.user,
@@ -321,38 +322,57 @@ def create_checkout_session(request, target_id):
                 amount_paid=49.00,
                 is_paid=False
             )
-            OrderItem.objects.create(order=new_order, directory=target_directory)
-            
             metadata = {
-                'purchase_type': 'directory',
-                'directory_id': target_directory.id,
+                'purchase_type': 'legacy_directory_upgrade',
                 'order_id': new_order.order_id
             }
 
-        # PATHWAY B: Fallback check to see if target_id is a Custom Scrape Request ($10.00)
-        except ChamberDirectory.DoesNotExist:
-            scrape_request = ChamberRequest.objects.get(id=target_id)
-            
-            # Security Boundary Check
-            if scrape_request.user_email != request.user.email:
-                messages.error(request, "Unauthorized data pipeline checkout attempt.")
-                return redirect('leads_list')
+        else:
+            # PATHWAY B: Standard lookup for a specific Chamber Directory asset ($49.00)
+            try:
+                target_directory = ChamberDirectory.objects.get(id=request_id)
+                package_name = f"Premium Access: {target_directory.name} Directory"
+                package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
+                amount_in_cents = 4900  
                 
-            package_name = "Premium Custom Chamber Dataset Extraction"
-            package_description = f"Target Focus: {scrape_request.chamber_name}. Target URL: {scrape_request.chamber_url}"
-            amount_in_cents = 1000  
-            
-            new_order = Order.objects.create(
-                user=request.user,
-                order_id=generated_order_id,
-                amount_paid=10.00,
-                is_paid=False
-            )
-            metadata = {
-                'purchase_type': 'custom_scrape',
-                'scrape_request_id': scrape_request.id,
-                'order_id': new_order.order_id
-            }
+                new_order = Order.objects.create(
+                    user=request.user,
+                    order_id=generated_order_id,
+                    amount_paid=49.00,
+                    is_paid=False
+                )
+                OrderItem.objects.create(order=new_order, directory=target_directory)
+                
+                metadata = {
+                    'purchase_type': 'directory',
+                    'directory_id': target_directory.id,
+                    'order_id': new_order.order_id
+                }
+
+            # PATHWAY C: Fallback check to see if request_id matches a Custom Scrape Request ($10.00)
+            except ChamberDirectory.DoesNotExist:
+                scrape_request = ChamberRequest.objects.get(id=request_id)
+                
+                # Security Boundary Check
+                if scrape_request.user_email != request.user.email:
+                    messages.error(request, "Unauthorized data pipeline checkout attempt.")
+                    return redirect('leads_list')
+                    
+                package_name = "Premium Custom Chamber Dataset Extraction"
+                package_description = f"Target Focus: {scrape_request.chamber_name}. Target URL: {scrape_request.chamber_url}"
+                amount_in_cents = 1000  # Strict customer-friendly $10 mark for custom builds
+                
+                new_order = Order.objects.create(
+                    user=request.user,
+                    order_id=generated_order_id,
+                    amount_paid=10.00,
+                    is_paid=False
+                )
+                metadata = {
+                    'purchase_type': 'custom_scrape',
+                    'scrape_request_id': scrape_request.id,
+                    'order_id': new_order.order_id
+                }
 
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -513,5 +533,16 @@ def stripe_webhook(request):
                     scrape_req.save()
                 except ChamberRequest.DoesNotExist:
                     pass
+                    
+        # FULFILLMENT TYPE 3: Handle legacy/fallback structural upgrades securely
+        elif purchase_type == 'legacy_directory_upgrade':
+            # Optionally fallback to setting global access profiles or finding first available directories
+            try:
+                user = User.objects.get(id=user_id)
+                if hasattr(user, 'profile'):
+                    user.profile.is_premium = True
+                    user.profile.save()
+            except User.DoesNotExist:
+                pass
 
     return HttpResponse(status=200)

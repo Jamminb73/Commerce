@@ -39,16 +39,16 @@ def landing_page(request):
 def request_custom_scrape(request):
     """
     Processes user submission requests for custom tiered data extraction batches.
-    Anchored cleanly to our primary entry-level price point of $49.00.
+    Anchored cleanly to our customer-friendly entry-level price point of $10.00.
     """
     if request.method == 'POST':
         form = ChamberRequestForm(request.POST)
         if form.is_valid():
             chamber_request = form.save(commit=False)
             
-            # Align database parameters explicitly with our verified $49 pricing entry boundary
-            chamber_request.estimated_cost = 49.00
-            price_string = "$49.00"
+            # Align database parameters explicitly with our verified $10 pricing entry boundary
+            chamber_request.estimated_cost = 10.00
+            price_string = "$10.00"
 
             # Fallback to current authenticated user's email if field was left blank
             if request.user.is_authenticated and not chamber_request.user_email:
@@ -78,7 +78,7 @@ def request_custom_scrape(request):
                 request, 
                 "Your custom scrape request has been successfully logged! Redirecting to secure checkout..."
             )
-            return redirect('create_checkout_session', request_id=chamber_request.id)
+            return redirect('create_checkout_session', target_id=chamber_request.id)
     else:
         initial_data = {}
         if request.user.is_authenticated:
@@ -295,60 +295,63 @@ def register_view(request):
     return render(request, 'leads/register.html')
 
 
-def create_checkout_session(request, request_id):
+def create_checkout_session(request, target_id):
     """
-    Generates a Stripe Checkout Session. Maps to a specific $49 custom scrape 
-    if request_id > 0, or processes a global sitewide Premium Upgrade if request_id == 0.
+    Unified Stripe Checkout Engine. 
+    - Chamber Directory Purchase: $49.00 (Full regional directory database access)
+    - Custom Scrape Request: $10.00 (Single custom on-demand scrape task package)
     """
     if not request.user.is_authenticated:
         return redirect('login')
 
     try:
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        
-        # INTERCEPT INTERNALLY FLAG: Global Premium Sitewide Upgrade ($49.00 fixed entry point)
-        if request_id == 0:
-            package_name = "Chamber Pipeline Premium Membership"
-            package_description = "Unlimited access to all unmasked Chamber directories and lead exports."
+        generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
+
+        # PATHWAY A: Try looking up target_id as an existing Chamber Directory ($49.00)
+        try:
+            target_directory = ChamberDirectory.objects.get(id=target_id)
+            package_name = f"Premium Access: {target_directory.name} Directory"
+            package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
             amount_in_cents = 4900  
             
-            generated_order_id = f"SUB-{uuid.uuid4().hex[:12].upper()}"
             new_order = Order.objects.create(
                 user=request.user,
                 order_id=generated_order_id,
                 amount_paid=49.00,
                 is_paid=False
             )
+            OrderItem.objects.create(order=new_order, directory=target_directory)
+            
             metadata = {
-                'order_id': new_order.order_id,
-                'global_upgrade': 'true'
+                'purchase_type': 'directory',
+                'directory_id': target_directory.id,
+                'order_id': new_order.order_id
             }
 
-        # STANDARD PATHWAY: Custom Dataset Scrape Checkout Flow
-        else:
-            scrape_request = ChamberRequest.objects.get(id=request_id)
+        # PATHWAY B: Fallback check to see if target_id is a Custom Scrape Request ($10.00)
+        except ChamberDirectory.DoesNotExist:
+            scrape_request = ChamberRequest.objects.get(id=target_id)
             
-            # Security Boundary
+            # Security Boundary Check
             if scrape_request.user_email != request.user.email:
-                messages.error(request, "Unauthorized request checkout attempt.")
+                messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
                 
             package_name = "Premium Custom Chamber Dataset Extraction"
-            package_description = f"Target Focus: {scrape_request.chamber_name}. Scope Target URL: {scrape_request.target_url}"
-            amount_in_cents = int(float(scrape_request.estimated_cost) * 100)
+            package_description = f"Target Focus: {scrape_request.chamber_name}. Target URL: {scrape_request.chamber_url}"
+            amount_in_cents = 1000  
             
-            generated_order_id = f"ORD-{uuid.uuid4().hex[:12].upper()}"
             new_order = Order.objects.create(
                 user=request.user,
                 order_id=generated_order_id,
-                amount_paid=scrape_request.estimated_cost,
+                amount_paid=10.00,
                 is_paid=False
             )
-            OrderItem.objects.create(order=new_order)
             metadata = {
-                'chamber_request_id': scrape_request.id,
-                'order_id': new_order.order_id,
-                'global_upgrade': 'false'
+                'purchase_type': 'custom_scrape',
+                'scrape_request_id': scrape_request.id,
+                'order_id': new_order.order_id
             }
 
         checkout_session = stripe.checkout.Session.create(
@@ -374,8 +377,8 @@ def create_checkout_session(request, request_id):
         )
         return redirect(checkout_session.url, code=303)
         
-    except ChamberRequest.DoesNotExist:
-        messages.error(request, "Target workspace request dataset not located.")
+    except (ChamberDirectory.DoesNotExist, ChamberRequest.DoesNotExist):
+        messages.error(request, "The specified chamber inventory asset or scrape pipeline target was not located.")
         return redirect('leads_list')
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -449,7 +452,10 @@ def manual_upgrade_test(request):
 
 @csrf_exempt
 def stripe_webhook(request):
-    """Listens for verified webhook calls from Stripe to fulfill purchases automatically."""
+    """
+    Listens for verified webhook calls from Stripe to fulfill purchases automatically.
+    Registers precise individual row entries inside UserPurchase instead of blanket profile flags.
+    """
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     event = None
@@ -458,54 +464,54 @@ def stripe_webhook(request):
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
-    except ValueError as e:
+    except ValueError:
         return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
         return HttpResponse(status=400)
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         user_id = session.get('client_reference_id')
         metadata = session.get('metadata', {})
-        chamber_request_id = metadata.get('chamber_request_id')
-        order_id = metadata.get('order_id')
-        global_upgrade = metadata.get('global_upgrade')
         
-        # 1. Handle incoming isolated item purchase matches via tracking orders
-        if order_id and user_id:
-            try:
-                order = Order.objects.get(order_id=order_id, user_id=user_id)
-                order.is_paid = True
-                order.save()
+        purchase_type = metadata.get('purchase_type')
+        order_id = metadata.get('order_id')
+        
+        if not user_id or not order_id:
+            return HttpResponse(status=200)
 
-                # Process specific item fulfillments inside UserPurchase boundary layout
-                for item in order.items.all():
+        # Securely mark the internal tracking order snapshot as fully paid
+        try:
+            order = Order.objects.get(order_id=order_id, user_id=user_id)
+            order.is_paid = True
+            order.save()
+        except Order.DoesNotExist:
+            return HttpResponse(status=200)
+
+        # FULFILLMENT TYPE 1: Target Chamber Directory Purchase Access Allocation ($49)
+        if purchase_type == 'directory':
+            directory_id = metadata.get('directory_id')
+            if directory_id:
+                try:
+                    target_directory = ChamberDirectory.objects.get(id=directory_id)
+                    # Unlocks ONLY this specific chamber listing inside the UserPurchase wall
                     UserPurchase.objects.get_or_create(
                         user_id=user_id,
-                        directory=item.directory,
-                        lead=item.lead,
-                        stripe_session_id=session.id
+                        directory=target_directory,
+                        defaults={'stripe_session_id': session.id}
                     )
-            except Order.DoesNotExist:
-                pass
+                except ChamberDirectory.DoesNotExist:
+                    pass
 
-        # 2. Update tracking state on the ChamberRequest model
-        if chamber_request_id:
-            try:
-                scrape_req = ChamberRequest.objects.get(id=chamber_request_id)
-                scrape_req.status = 'completed'  
-                scrape_req.save()
-            except ChamberRequest.DoesNotExist:
-                pass
-        
-        # 3. Handle global flat directory upgrades or explicit sitewide dashboard overrides
-        if (global_upgrade == 'true' or not order_id) and user_id:
-            try:
-                user = User.objects.get(id=user_id)
-                if hasattr(user, 'profile'):
-                    user.profile.is_premium = True
-                    user.profile.save()
-            except User.DoesNotExist:
-                pass
+        # FULFILLMENT TYPE 2: On-Demand Custom Data Scrape Request Settlement ($10)
+        elif purchase_type == 'custom_scrape':
+            scrape_request_id = metadata.get('scrape_request_id')
+            if scrape_request_id:
+                try:
+                    scrape_req = ChamberRequest.objects.get(id=scrape_request_id)
+                    scrape_req.status = 'completed'  
+                    scrape_req.save()
+                except ChamberRequest.DoesNotExist:
+                    pass
 
     return HttpResponse(status=200)

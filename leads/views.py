@@ -14,7 +14,6 @@ from django.core.paginator import Paginator
 from django.core.mail import send_mail  
 
 from .models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
-from .models import UserPurchase  # Ensuring core model imports stay intact
 from .forms import ChamberRequestForm  
 
 def landing_page(request):
@@ -481,29 +480,29 @@ def stripe_webhook(request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         
-        raw_user_id = session.get('client_reference_id')
+        # 🛡️ FIX: Safely convert StripeObject instance to dict to enable standard dictionary lookup methods (.get)
+        session_dict = session.to_dict() if hasattr(session, 'to_dict') else session
+        
+        raw_user_id = session_dict.get('client_reference_id')
         try:
             user_id = int(raw_user_id) if raw_user_id else None
         except ValueError:
             user_id = None
             
-        metadata = session.get('metadata', {})
+        metadata = session_dict.get('metadata', {})
         purchase_type = metadata.get('purchase_type')
         order_id = metadata.get('order_id')
         
-        if not user_id:
+        if not user_id or not order_id:
             return HttpResponse(status=200)
 
-        # 🛡️ BULLETPROOF WORKAROUND: Wrap order lookup in a generic catch-all Exception container 
-        # so it safely falls through to data delivery instead of returning a 500 server crash.
-        if order_id:
-            try:
-                order = Order.objects.filter(order_id=order_id).first()
-                if order:
-                    order.is_paid = True
-                    order.save()
-            except Exception:
-                pass
+        # 🛡️ FIX: Look up the FK reference using 'user' (object/id identifier) to satisfy Django query mechanics
+        try:
+            order = Order.objects.get(order_id=order_id, user=user_id)
+            order.is_paid = True
+            order.save()
+        except Order.DoesNotExist:
+            return HttpResponse(status=200)
 
         # FULFILLMENT TYPE 1: Target Chamber Directory Purchase Access Allocation ($49)
         if purchase_type == 'directory':
@@ -515,7 +514,7 @@ def stripe_webhook(request):
                     UserPurchase.objects.get_or_create(
                         user_id=user_id,
                         directory=target_directory,
-                        defaults={'stripe_session_id': session.id}
+                        defaults={'stripe_session_id': session_dict.get('id')}
                     )
                 except ChamberDirectory.DoesNotExist:
                     pass

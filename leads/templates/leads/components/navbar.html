@@ -1,0 +1,29 @@
+<nav style="background-color: #1e3a8a; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; color: white;">
+    
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <span style="font-size: 1.25rem; font-weight: bold; letter-spacing: 0.5px;">
+            Local Commerce Leads
+        </span>
+        
+        {% if user.is_staff %}
+            <a href="{% url 'admin:index' %}" 
+               target="_blank" 
+               style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;"
+               onmouseover="this.style.backgroundColor='#dc2626'"
+               onmouseout="this.style.backgroundColor='#ef4444'">
+                ⚙️ Admin Panel
+            </a>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        {% if user.is_authenticated %}
+            <div style="background-color: white; color: #1e3a8a; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="{{ user.username }}">
+                {{ user.username|slice:":2"|upper }}
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}" style="color: white; text-decoration: none; font-weight: 500;">Sign In</a>
+        {% endif %}
+    </div>
+
+</nav>

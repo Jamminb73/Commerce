@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GA Commerce Leads | Premium Business Data</title>
+    <title>Local Commerce Leads | Premium Business Data</title>
     <style>
         :root {
             --primary-bg: #1a2a6c;
@@ -14,7 +14,7 @@
 
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; color: var(--text-dark); }
         
-        /* Navigation Styles */
+        /* 🚀 STICKY UPDATE: Pins navigation bar to top of window frame when scrolling */
         nav {
             background: var(--primary-bg);
             padding: 15px 30px;
@@ -22,6 +22,11 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            z-index: 10000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .nav-brand h2 {
@@ -202,7 +207,6 @@
         }
         .card h3 { color: var(--primary-bg); margin-top: 0; }
 
-        /* Reusable base button mapping fallback for structural hooks */
         .btn-main { 
             background: var(--accent-color); 
             color: white; 
@@ -223,9 +227,20 @@
 <body>
 
     <nav>
-        <div class="nav-brand">
-            <h2>GA Commerce Leads</h2>
+        <div class="nav-brand" style="display: flex; align-items: center; gap: 15px;">
+            <h2>Local Commerce Leads</h2>
+            
+            {% if request.user.is_staff %}
+                <a href="{% url 'admin:index' %}" 
+                   target="_blank" 
+                   style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;"
+                   onmouseover="this.style.backgroundColor='#dc2626'"
+                   onmouseout="this.style.backgroundColor='#ef4444'">
+                    ⚙️ Admin Panel
+                </a>
+            {% endif %}
         </div>
+        
         <div class="nav-container">
             {% if is_authenticated_user %}
                 <div class="profile-dropdown">
@@ -245,12 +260,14 @@
                         <hr>
                         
                         <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
-                        
                         <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
                         
                         {% if request.user.is_staff %}
-                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid var(--accent-color);">
-                                ✍️ Blog Dashboard
+                            <a href="{% url 'admin:index' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #ef4444; font-weight: 600;">
+                                🛠️ Native Django Tables
+                            </a>
+                            <a href="/admin/blog/post/add/" target="_blank" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
+                                ✍️ Create New Blog Post
                             </a>
                         {% endif %}
                         
@@ -276,7 +293,7 @@
     </nav>
 
     <div class="hero">
-        <h1>Direct Access to Georgia's Decision Makers</h1>
+        <h1>Connect Directly With Premium Chamber Leads!</h1>
         <p>Stop scraping. Start selling. Over 100+ verified Chamber of Commerce leads at your fingertips.</p>
         {% if is_authenticated_user %}
             <a href="{% url 'leads_list' %}" style="text-decoration: none;">
@@ -290,7 +307,7 @@
     </div>
 
     <div class="container">
-        <h2 style="text-align:center; margin-bottom: 40px; font-size: 2rem; color: var(--primary-bg);">Why GA Commerce Leads?</h2>
+        <h2 style="text-align:center; margin-bottom: 40px; font-size: 2rem; color: var(--primary-bg);">Why Local Commerce Leads?</h2>
         <div class="grid">
             <div class="card">
                 <h3>Verified Data</h3>

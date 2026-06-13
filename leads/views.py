@@ -480,7 +480,6 @@ def stripe_webhook(request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         
-        # 🛡️ FIX: Safely convert StripeObject instance to dict to enable standard dictionary lookup methods (.get)
         session_dict = session.to_dict() if hasattr(session, 'to_dict') else session
         
         raw_user_id = session_dict.get('client_reference_id')
@@ -496,13 +495,12 @@ def stripe_webhook(request):
         if not user_id or not order_id:
             return HttpResponse(status=200)
 
-        # 🛡️ FIX: Look up the FK reference using 'user' (object/id identifier) to satisfy Django query mechanics
-        try:
-            order = Order.objects.get(order_id=order_id, user=user_id)
+        # 🛡️ FIX: Reference the strict relationship identifier 'user_id' instead of object mapping 'user'
+        # 🛡️ ALSO FIX: Filter cleanly so if an order isn't present during test events, fulfillment doesn't halt early
+        order = Order.objects.filter(order_id=order_id, user_id=user_id).first()
+        if order:
             order.is_paid = True
             order.save()
-        except Order.DoesNotExist:
-            return HttpResponse(status=200)
 
         # FULFILLMENT TYPE 1: Target Chamber Directory Purchase Access Allocation ($49)
         if purchase_type == 'directory':

@@ -274,6 +274,22 @@
     <form method="POST" action="{% url 'request_custom_scrape' %}">
         {% csrf_token %}
         
+        {% if form.errors %}
+            <div style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 18px; border-radius: 8px; margin-bottom: 25px; font-size: 0.95rem; box-sizing: border-box;">
+                <strong style="display: block; margin-bottom: 8px;">⚠️ Form Validation Blocked:</strong>
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        
         <div class="form-group">
             <label for="{{ form.user_email.id_for_label }}">Contact Email Address</label>
             {{ form.user_email }}

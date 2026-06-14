@@ -230,6 +230,24 @@ def leads_list(request):
     return render(request, 'leads/leads_list.html', context)
 
 
+def purchase_directory(request, request_id=0):
+    """Renders the single dynamic catalog checkout menu view platform."""
+    # Query all active inventory database sets alphabetically
+    active_directories = ChamberDirectory.objects.filter(is_active=True).order_by('name')
+    
+    context = {
+        'is_authenticated_user': request.user.is_authenticated,
+        'user_email': request.user.email if request.user.is_authenticated else "",
+        'username': request.user.username if request.user.is_authenticated else "",
+        'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None,
+        
+        'active_directories': active_directories,
+        'pre_selected_id': int(request_id),
+        'price_string': "$9.99"
+    }
+    return render(request, 'leads/purchase_directory.html', context)
+
+
 def login_view(request):
     """Authenticates existing users into the application."""
     if request.method == 'POST':

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unlock Premium Directory - ChamberPipeline</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-dark: #2d3748;
+            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .checkout-card {
+            max-width: 550px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            color: var(--primary-bg);
+            margin-top: 0;
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+
+        .dropdown-container {
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .directory-select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            color: var(--text-dark);
+            font-weight: 600;
+            background-color: #f8fafc;
+            outline: none;
+            transition: border-color 0.2s;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%231a2a6c' viewBox='0 0 16 16'><path d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+        }
+
+        .directory-select:focus {
+            border-color: var(--accent-color);
+        }
+
+        .price-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 15px 5px;
+            margin-bottom: 30px;
+            font-size: 1rem;
+            color: #718096;
+        }
+
+        .price-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .btn-checkout {
+            background: var(--accent-color);
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: block;
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn-checkout:hover {
+            background: #e67e22;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #a0aec0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+
+<div class="checkout-card">
+    <h2>Unlock Premium Directory</h2>
+    <p style="color: #718096; line-height: 1.5; margin: 0; font-size: 0.95rem;">
+        Select an active catalog region below to unlock instant, unmasked access and CSV record exporting privileges.
+    </p>
+    
+    <div class="dropdown-container">
+        <label for="directorySelect">Target Chamber Directory:</label>
+        <select id="directorySelect" class="directory-select">
+            {% for directory in active_directories %}
+                <option value="{{ directory.id }}" {% if directory.id == pre_selected_id %}selected{% endif %}>
+                    💼 {{ directory.name }} ({{ directory.state }})
+                </option>
+            {% empty %}
+                <option value="0">No active directories available</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="price-line">
+        <span>One-Time Dataset Activation</span>
+        <span class="price-val">{{ price_string }}</span>
+    </div>
+
+    <button onclick="redirectToCheckout()" class="btn-checkout">
+        Proceed to Secure Checkout
+    </button>
+
+    <a href="{% url 'leads_list' %}" class="back-link">← Cancel and Go Back</a>
+</div>
+
+<script>
+function redirectToCheckout() {
+    var selectEl = document.getElementById("directorySelect");
+    var selectedId = selectEl.value;
+    
+    if (selectedId === "0" || !selectedId) {
+        alert("Please select a valid directory to unlock.");
+        return;
+    }
+    
+    // Construct the dynamic checkout URL routing to your create_checkout_session view
+    var checkoutBaseUrl = "{% url 'create_checkout_session' request_id=0 %}";
+    // Replace the dummy '0' ID with the user's explicit choice from the dropdown
+    var finalCheckoutUrl = checkoutBaseUrl.replace('/0/', '/' + selectedId + '/');
+    
+    // Send them straight to the stripe link generation routing
+    window.location.href = finalCheckoutUrl;
+}
+</script>
+
+</body>
+</html>

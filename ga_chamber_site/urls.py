@@ -6,6 +6,7 @@ from leads.sitemaps import StaticViewSitemap
 from leads.views import (
     landing_page,
     leads_list,       
+    purchase_directory,             # <-- Imported the new dropdown checkout view
     register_view,
     login_view,
     logout_view,             
@@ -41,6 +42,10 @@ urlpatterns = [
     path('about/', about_page, name='about_page'), # <-- Registered the path for the new About page
     path('leads/', leads_list, name='leads_list'),  
     path('leads/export/', export_leads_csv, name='export_leads_csv'),  
+    
+    # Dedicated Dropdown Catalogue Checkout Flow
+    path('purchase-directory/', purchase_directory, name='purchase_directory_base'),
+    path('purchase-directory/<int:request_id>/', purchase_directory, name='purchase_directory'),
     
     # Hidden API Routing Layer
     path('api/active-cities/', active_directories_api, name='active_cities_api'),  # <-- Registered the city list query route

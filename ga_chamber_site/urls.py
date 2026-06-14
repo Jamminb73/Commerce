@@ -18,6 +18,7 @@ from leads.views import (
     request_success_view,           
     export_leads_csv,               
     active_directories_api,         # <-- Added the hidden live city lookup API endpoint
+    about_page,                     # <-- Imported the new about view function
 )
 
 # Dictionary mapping for the sitemap framework
@@ -37,6 +38,7 @@ urlpatterns = [
     # Core Application Routes
     path('admin/', admin.site.urls),
     path('', landing_page, name='home'),
+    path('about/', about_page, name='about_page'), # <-- Registered the path for the new About page
     path('leads/', leads_list, name='leads_list'),  
     path('leads/export/', export_leads_csv, name='export_leads_csv'),  
     

@@ -3,26 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Commerce Leads | Premium Business Data</title>
+    <title>About Us | Georgia Chamber Leads</title>
     <style>
         :root {
             --primary-bg: #1a2a6c;
             --accent-color: #f39c12;
-            --text-light: #ffffff;
             --text-dark: #2d3748;
+            --text-muted: #718096;
+            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; color: var(--text-dark); }
-        
-        /* 🚀 STICKY UPDATE: Pins navigation bar to top of window frame when scrolling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7fafc;
+            margin: 0;
+            padding: 0;
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        /* --- Navigation Bar --- */
         nav {
             background: var(--primary-bg);
             padding: 15px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            position: -webkit-sticky;
             position: sticky;
             top: 0;
             z-index: 10000;
@@ -57,7 +63,7 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        /* --- Profile Dropdown Layout Styles --- */
+        /* --- Profile Dropdown Layout --- */
         .profile-dropdown {
             position: relative;
             display: inline-block;
@@ -123,7 +129,7 @@
         .user-email {
             display: block;
             font-size: 0.8rem;
-            color: #718096;
+            color: var(--text-muted);
             margin-top: 2px;
             word-break: break-all;
         }
@@ -148,80 +154,128 @@
             background-color: #f1f5f9;
         }
 
-        .purchase-highlight {
-            color: #d97706;
-            font-weight: 600;
-            background-color: rgba(245, 158, 11, 0.05);
+        .text-warning { color: #dc2626 !important; }
+        .text-danger { color: #718096 !important; }
+
+        /* --- About Content Styling --- */
+        .about-hero {
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+            color: white;
+            text-align: center;
+            padding: 80px 20px;
         }
 
-        .disabled-premium {
-            color: #a0aec0 !important;
-            background-color: #f8fafc;
-            cursor: not-allowed;
-            padding: 12px 16px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .badge-upgrade {
-            background: #e2e8f0;
-            color: #4a5568;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
+        .about-hero h1 {
+            font-size: 3rem;
+            margin: 0 0 15px 0;
+            letter-spacing: -1px;
             font-weight: 700;
         }
 
-        .text-warning {
-            color: #dc2626 !important;
+        .about-hero p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            max-width: 750px;
+            margin: 0 auto;
+            font-weight: 400;
         }
 
-        .text-danger {
-            color: #718096 !important;
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 20px;
         }
 
-        /* Hero Section */
-        .hero { 
-            background: var(--primary-bg); 
-            color: white; 
-            padding: 80px 20px 100px 20px; 
-            text-align: center; 
+        .mission-statement {
+            text-align: center;
+            font-size: 1.4rem;
+            color: var(--primary-bg);
+            font-weight: 600;
+            margin-bottom: 60px;
+            line-height: 1.5;
         }
-        .hero h1 { font-size: 3.5rem; margin-bottom: 10px; letter-spacing: -1px; }
-        .hero p { font-size: 1.2rem; opacity: 0.9; max-width: 700px; margin: 0 auto 30px auto; }
 
-        /* Content Container */
-        .container { max-width: 1000px; margin: auto; padding: 60px 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
-        
-        .card { 
-            background: #fff;
-            border: 1px solid #eee; 
-            padding: 30px; 
-            border-radius: 12px; 
-            text-align: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
         }
-        .card h3 { color: var(--primary-bg); margin-top: 0; }
 
-        .btn-main { 
-            background: var(--accent-color); 
-            color: white; 
-            padding: 18px 40px; 
-            text-decoration: none; 
-            border-radius: 8px; 
-            font-weight: bold; 
-            display: inline-block; 
-            font-size: 1.1rem;
+        .feature-card {
+            background: white;
+            padding: 35px 30px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            color: var(--primary-bg);
+            margin: 0 0 12px 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .feature-card p {
+            margin: 0;
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+
+        /* --- Footer CTA Block --- */
+        .cta-banner {
+            background: linear-gradient(135deg, #1a2a6c 0%, #273c75 100%);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            box-shadow: var(--card-shadow);
+        }
+
+        .cta-banner h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
+            letter-spacing: -0.5px;
+        }
+
+        .cta-banner p {
+            color: rgba(255, 255, 255, 0.85);
+            max-width: 600px;
+            margin: 0 auto 25px auto;
+            font-size: 1.05rem;
+        }
+
+        .btn-cta {
+            background: var(--accent-color);
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 1rem;
             box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
             transition: all 0.2s;
             border: none;
             cursor: pointer;
         }
-        .btn-main:hover { background: #e67e22; transform: translateY(-1px); }
+
+        .btn-cta:hover {
+            background: #e67e22;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -230,15 +284,9 @@
         <div class="nav-brand" style="display: flex; align-items: center; gap: 15px;">
             <h2>Local Commerce Leads</h2>
             
-            {% if not is_authenticated_user %}
-                <a href="{% url 'about_page' %}" class="nav-btn" style="font-size: 0.95rem; opacity: 0.85; margin-left: 10px;">About Us</a>
-            {% endif %}
-            
             {% if request.user.is_staff %}
                 <a href="{% url 'admin:index' %}" 
-                   style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;"
-                   onmouseover="this.style.backgroundColor='#dc2626'"
-                   onmouseout="this.style.backgroundColor='#ef4444'">
+                   style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
                     ⚙️ Admin Panel
                 </a>
             {% endif %}
@@ -262,7 +310,7 @@
                         </div>
                         <hr>
                         
-                        <a href="{% url 'about_page' %}" class="menu-item">ℹ️ About Us</a>
+                        <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
                         <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
                         <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
                         
@@ -280,41 +328,47 @@
                     </div>
                 </div>
             {% else %}
+                <a href="{% url 'home' %}" class="nav-btn">Home</a>
                 <a href="{% url 'login' %}" class="nav-btn">Login</a>
                 <a href="{% url 'register' %}" class="nav-btn" style="background: var(--accent-color); color: white; padding: 8px 20px; border-radius: 5px; font-weight: bold;">Register</a>
             {% endif %}
         </div>
     </nav>
 
-    <div class="hero">
-        <h1>Connect Directly With Premium Chamber Leads!</h1>
-        <p>Stop scraping. Start selling. Over 100+ verified Chamber of Commerce leads at your fingertips.</p>
-        {% if is_authenticated_user %}
-            <a href="{% url 'leads_list' %}" style="text-decoration: none;">
-                {% include "leads/components/base_button.html" with button_text="View Leads Dashboard" button_classes="btn-main" %}
-            </a>
-        {% else %}
-            <a href="{% url 'register' %}" style="text-decoration: none;">
-                {% include "leads/components/base_button.html" with button_text="Get Instant Access Now" button_classes="btn-main" %}
-            </a>
-        {% endif %}
+    <div class="about-hero">
+        <h1>Our Goal & Mission</h1>
+        <p>Assembling premium, ready-to-use business intelligence so you can cut out the friction and focus entirely on growth.</p>
     </div>
 
-    <div class="container">
-        <h2 style="text-align:center; margin-bottom: 40px; font-size: 2rem; color: var(--primary-bg);">Why Local Commerce Leads?</h2>
+    <div class="main-container">
+        <div class="mission-statement">
+            "We believe that acquiring local B2B leads should be fast, transparent, and completely effortless—putting the exact data you need straight at your fingertips."
+        </div>
+
         <div class="grid">
-            <div class="card">
-                <h3>Verified Data</h3>
-                <p>Curated lists from Metro Atlanta, Cobb, and Gwinnett Chambers.</p>
+            <div class="feature-card">
+                <span class="feature-icon">🔍</span>
+                <h3>Targeted Assembly</h3>
+                <p>We actively monitor, extract, and clean regional Chamber of Commerce data pipelines, saving you hundreds of hours spent navigating legacy directories or fighting with brittle web scrapers.</p>
             </div>
-            <div class="card">
-                <h3>Clean Formatting</h3>
-                <p>Professional directory-style names ready for your CRM or outreach.</p>
+
+            <div class="feature-card">
+                <span class="feature-icon">✨</span>
+                <h3>Pristine Formatting</h3>
+                <p>Raw web data is messy. We parse, clean, and standardize individual profile names and organizational titles into professional directory structures optimized for your CRM or outreach workflows.</p>
             </div>
-            <div class="card">
-                <h3>Direct Emails</h3>
-                <p>No generic "info@" addresses. Reach the staff who actually make decisions.</p>
+
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h3>Data on Demand</h3>
+                <p>No high-ticket subscription tiers or multi-year contracts. Our automated custom pipelines put raw market data completely in your control—request exactly what you want, when you want it.</p>
             </div>
+        </div>
+
+        <div class="cta-banner">
+            <h2>Ready to transform your outreach?</h2>
+            <p>Explore our active verified directories or request a custom pipeline built precisely to your geographical target specs.</p>
+            <a href="{% url 'leads_list' %}" class="btn-cta">Explore The Dashboard</a>
         </div>
     </div>
 

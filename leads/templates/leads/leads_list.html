@@ -372,6 +372,7 @@
                         <hr>
                         
                         <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
+                        <a href="{% url 'about_page' %}" class="menu-item">ℹ️ About Us</a>
                         
                         {% if request.resolver_match.url_name != 'leads_list' %}
                             <a href="{% url 'leads_list' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">📋 Go to Leads Page</a>

@@ -523,3 +523,14 @@ def active_directories_api(request):
     cities = ChamberDirectory.objects.filter(is_active=True).values_list('city_or_region', flat=True).distinct()
     cleaned_cities = [str(c).strip().lower() for c in cities if c]
     return JsonResponse({'active_cities': cleaned_cities})
+
+
+def about_page(request):
+    """Renders the trust, objective and customer-centric value positioning framework."""
+    context = {
+        'is_authenticated_user': request.user.is_authenticated,
+        'user_email': request.user.email if request.user.is_authenticated else "",
+        'username': request.user.username if request.user.is_authenticated else "",
+        'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None
+    }
+    return render(request, 'leads/about.html', context)

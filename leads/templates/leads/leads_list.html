@@ -372,7 +372,11 @@
                         <hr>
                         
                         <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
-                        <a href="{% url 'leads_list' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">📋 Go to Leads Page</a>
+                        
+                        {% if request.resolver_match.url_name != 'leads_list' %}
+                            <a href="{% url 'leads_list' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">📋 Go to Leads Page</a>
+                        {% endif %}
+                        
                         <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
                         
                         {% if request.user.is_staff %}

@@ -52,7 +52,7 @@ urlpatterns = [
     path('payment-cancel/', payment_cancel_view, name='payment_cancel'),
     
     # Stripe Billing/Cancellation Management Portal
-    path('account/manage/', stripe_customer_portal, name='stripe_customer_portal'),  
+    #path('account/manage/', stripe_customer_portal, name='stripe_customer_portal'),  
     
     # Unified Webhook Receiver (Matches your stripe listen routing target)
     path('webhook/', stripe_webhook, name='stripe_webhook'),

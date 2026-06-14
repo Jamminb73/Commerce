@@ -48,7 +48,7 @@ class ChamberRequestForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': 'e.g., Cobb County Chamber (Leave blank to let our team source the correct directory for you)'
+            'placeholder': 'e.g., Cobb County Chamber, Metro Atlanta Chamber\n(List multiple chambers here, one per line or comma-separated)'
         })
     )
     
@@ -57,7 +57,7 @@ class ChamberRequestForm(forms.ModelForm):
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': 'Leave blank to let our data engine locate the primary membership indexing links automatically'
+            'placeholder': 'Provide specific membership index links here if you have them\n(Leave blank to let our data engine locate them automatically)'
         })
     )
 
@@ -71,7 +71,7 @@ class ChamberRequestForm(forms.ModelForm):
             }),
             'city_or_region': forms.TextInput(attrs={
                 'class': 'form-control', 
-                'placeholder': 'e.g., Austin, Round Rock, Buda'
+                'placeholder': 'e.g., San Diego, La Jolla, Chula Vista (Separate multiple cities with commas)'
             }),
         }
 

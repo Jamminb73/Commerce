@@ -270,16 +270,6 @@
                             </a>
                         {% endif %}
                         
-                        {% if is_premium_member %}
-                            <a href="{% url 'stripe_customer_portal' %}" class="menu-item text-warning">💳 Cancel Subscription</a>
-                        {% else %}
-                            <div class="menu-item disabled-premium">
-                                <span>🔒 Premium Directory Access</span>
-                                <span class="badge-upgrade">Locked</span>
-                            </div>
-                            <a href="{% url 'purchase' %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
-                        {% endif %}
-                        
                         <hr>
                         <a href="{% url 'logout' %}" class="menu-item text-danger">🚪 Logout</a>
                     </div>

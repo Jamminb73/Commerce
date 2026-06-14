@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ChamberLead, ChamberDirectory, ChamberRequest, Profile, Order, OrderItem, UserPurchase
+from .models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -81,11 +81,3 @@ class ChamberLeadAdmin(admin.ModelAdmin):
     list_filter = ('directory__state', 'created_at')
     search_fields = ('first_name', 'last_name', 'email', 'organization', 'chamber')
     raw_id_fields = ['directory']
-
-
-@admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
-    """Tracks premium user billing and account authorizations."""
-    list_display = ('user', 'is_premium')
-    list_filter = ('is_premium',)
-    search_fields = ('user__username', 'user__email')

@@ -14,7 +14,6 @@ from leads.views import (
     payment_success_view,
     payment_cancel_view,     
     stripe_webhook,
-    stripe_customer_portal,  
     request_custom_scrape,          # Imported your intake view
     request_success_view,           # Imported your success view
 )

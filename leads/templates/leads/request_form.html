@@ -290,9 +290,15 @@
             </div>
         {% endif %}
         
-        <div class="form-group">
-            <label for="{{ form.user_email.id_for_label }}">Contact Email Address</label>
-            {{ form.user_email }}
+        <div class="form-row">
+            <div class="form-group">
+                <label for="{{ form.user_email.id_for_label }}">Contact Email Address</label>
+                {{ form.user_email }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.chambers_count.id_for_label }}">Number of Target Territories</label>
+                {{ form.chambers_count }}
+            </div>
         </div>
 
         <div class="form-row">
@@ -322,7 +328,7 @@
             <span style="font-size: 0.8rem; color: #718096; font-weight: 500;">Provide the direct links showing their public online membership directory index layout.</span>
         </div>
 
-        <button type="submit" class="btn-submit">Submit & Go to Secure Checkout ($8.00)</button>
+        <button type="submit" id="submit-btn" class="btn-submit">Submit & Go to Secure Checkout ($8.00)</button>
     </form>
 </div>
 
@@ -350,10 +356,11 @@ window.onclick = function(event) {
 document.addEventListener("DOMContentLoaded", function() {
     const cityInput = document.getElementById("id_city_or_region");
     const alertBox = document.getElementById("directory-alert");
+    const quantitySelect = document.getElementById("id_chambers_count");
+    const submitBtn = document.getElementById("submit-btn");
     let cachedCities = [];
 
     if (cityInput && alertBox) {
-        // Query database inventory layer silently on initial page rendering
         fetch("{% url 'active_cities_api' %}")
             .then(response => response.json())
             .then(data => {
@@ -361,21 +368,29 @@ document.addEventListener("DOMContentLoaded", function() {
             })
             .catch(err => console.error("Database directory coordinates sync error:", err));
 
-        // Listen for live client layout inputs
         cityInput.addEventListener("input", function() {
             const userInput = cityInput.value.trim().toLowerCase();
-            
-            // Smart conditional look-up loop to check cross-containment parameters
             const matchFound = cachedCities.some(function(city) {
                 return userInput.includes(city) || city.includes(userInput);
             });
             
-            // Toggle visibility parameter block
             if (userInput.length > 2 && matchFound) {
                 alertBox.style.display = "block";
             } else {
                 alertBox.style.display = "none";
             }
+        });
+    }
+
+    // Dynamic Button Price Calculator UI
+    if (quantitySelect && submitBtn) {
+        quantitySelect.addEventListener("change", function() {
+            const qty = parseInt(quantitySelect.value) || 1;
+            let totalCost = qty * 8;
+            if (qty === 5) {
+                totalCost = 32; // Buy 4, Get 1 Free Promo Application
+            }
+            submitBtn.textContent = `Submit & Go to Secure Checkout ($${totalCost}.00)`;
         });
     }
 });

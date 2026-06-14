@@ -47,9 +47,15 @@ def request_custom_scrape(request):
                 messages.info(request, f"Good news! {requested_city} data is already cataloged. Transferring to instant unlock portal.")
                 return redirect('create_checkout_session', request_id=existing_directory.id)
             
-            # Continue with normal custom pipeline extraction assignment ($8.00)
-            chamber_request.estimated_cost = 8.00
-            price_string = "$8.00"
+            # Dynamic Price String Calculation based on Quantity Tier Selection
+            qty = int(form.cleaned_data.get('chambers_count') or 1)
+            if qty == 5:
+                total_cost_float = 32.00  # "Buy 4, Get 1 Free" Promo pricing application
+            else:
+                total_cost_float = float(qty * 8.00)
+                
+            chamber_request.estimated_cost = total_cost_float
+            price_string = f"${total_cost_float:.2f}"
 
             if request.user.is_authenticated and not chamber_request.user_email:
                 chamber_request.user_email = request.user.email
@@ -61,7 +67,7 @@ def request_custom_scrape(request):
                 subject = f"[Scrape Request] New Order Tier Level: {price_string}"
                 message = (
                     f"New client dataset pipeline submission alert!\n\n"
-                    f"Plan Selection: {price_string}\n"
+                    f"Plan Selection: {price_string} ({qty} Target Locations)\n"
                     f"Target Chamber Name: {chamber_request.chamber_name}\n"
                     f"URL Provided:\n{chamber_request.chamber_url}\n\n"
                     f"Client Email Contact: {chamber_request.user_email}\n"
@@ -293,7 +299,7 @@ def create_checkout_session(request, request_id):
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
         checkout_type = request.GET.get('type', 'directory') # 💡 Sensor: Checks if custom type parameter exists
 
-        # --- ROUTE A: CUSTOM ON-DEMAND SCRAPE PIPELINE STAGE ($8.00) ---
+        # --- ROUTE A: CUSTOM ON-DEMAND SCRAPE PIPELINE STAGE ($8.00 base) ---
         if checkout_type == 'custom':
             scrape_request = get_object_or_404(ChamberRequest, id=request_id)
             
@@ -301,14 +307,23 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
                 
-            package_name = "Premium Custom Chamber Dataset Extraction"
-            package_description = f"Target Focus: {scrape_request.chamber_name}. Target URL: {scrape_request.chamber_url}"
-            amount_in_cents = 800  
+            # Extract target request multiplier counts safely from the record framework
+            quantity = int(scrape_request.chambers_count or 1)
+            package_name = f"Premium Custom Chamber Dataset Extraction ({quantity} Locations)"
+            package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}. Target URL: {scrape_request.chamber_url or 'Auto-Sourced Engine Target'}"
+            
+            # Volume Tier Multiplier Framework Engine (Buy 4, Get 1 Free Activation)
+            if quantity == 5:
+                amount_in_cents = 3200  # Charged for 4, 5th one is completely free
+                total_paid_float = 32.00
+            else:
+                amount_in_cents = quantity * 800  
+                total_paid_float = float(quantity * 8.00)
             
             new_order = Order.objects.create(
                 user=request.user,
                 order_id=generated_order_id,
-                amount_paid=8.00,
+                amount_paid=total_paid_float,
                 is_paid=False
             )
             metadata = {

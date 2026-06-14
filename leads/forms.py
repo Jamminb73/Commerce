@@ -19,15 +19,30 @@ STATE_CHOICES = [
     ('WI', 'Wisconsin'), ('WY', 'Wyoming')
 ]
 
+# Clean quantity list for bulk orders without full cart mess
+QUANTITY_CHOICES = [
+    (1, '1 Target Location ($8.00)'),
+    (2, '2 Target Locations ($16.00)'),
+    (3, '3 Target Locations ($24.00)'),
+    (4, '4 Target Locations ($32.00)'),
+    (5, '5 Target Locations (🔥 Buy 4 Get 1 Free! - $32.00)'),
+]
+
 class ChamberRequestForm(forms.ModelForm):
-    """Handles user-facing requests for custom chamber directory scrapes with fixed $8 pricing workflow."""
+    """Handles user-facing requests for custom chamber directory scrapes with volume scaling built-in."""
     
     state = forms.ChoiceField(
         choices=STATE_CHOICES,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    # Removed the data homework wall: Changed required to False so they can let our engine hunt it down
+    chambers_count = forms.ChoiceField(
+        choices=QUANTITY_CHOICES,
+        initial=1,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_chambers_count'}),
+        label="Number of Chambers/Cities to Target"
+    )
+
     chamber_name = forms.CharField(
         required=False,  
         widget=forms.Textarea(attrs={
@@ -37,7 +52,6 @@ class ChamberRequestForm(forms.ModelForm):
         })
     )
     
-    # Removed the link barrier: Changed required to False to maximize hands-off ease of use
     chamber_url = forms.CharField(
         required=False,  
         widget=forms.Textarea(attrs={
@@ -59,8 +73,6 @@ class ChamberRequestForm(forms.ModelForm):
                 'class': 'form-control', 
                 'placeholder': 'e.g., Austin, Round Rock, Buda'
             }),
-            # Intercepts the choices tier and cleanly outputs a hidden value to bind with HTML input fields
-            'chambers_count': forms.HiddenInput(),
         }
 
     def clean_state(self):

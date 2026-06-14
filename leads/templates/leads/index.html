@@ -265,8 +265,8 @@
                             <a href="{% url 'admin:index' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #ef4444; font-weight: 600;">
                                 🛠️ Native Django Tables
                             </a>
-                            <a href="/admin/blog/post/add/" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
-                                ✍️ Create New Blog Post
+                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
+                                📰 Manage Blog Posts
                             </a>
                         {% endif %}
                         

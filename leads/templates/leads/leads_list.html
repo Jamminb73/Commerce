@@ -178,11 +178,11 @@
         }
 
         .text-warning {
-            color: #dc2626 !important;
+            color: #d97706 !important;
         }
 
         .text-danger {
-            color: #718096 !important;
+            color: #dc2626 !important;
         }
 
         /* --- Button Classes Styles --- */
@@ -204,7 +204,6 @@
         }
         .btn-export:hover { background: #2f855a; }
 
-       /* Sleek secondary design with a professional medium blue accent */
         .btn-csv {
             background: #ffffff;
             color: #2b6cb0;
@@ -352,7 +351,7 @@
 
 <div class="container">
     <header>
-        <h1>Georgia Chamber Leads</h1>
+        <h1>ChamberPipeline</h1>
         <div class="nav-container">
             {% if is_authenticated_user %}
                 <div class="profile-dropdown">
@@ -398,6 +397,23 @@
     </header>
 
     <p class="subtitle">Verified Professional Contacts for Networking & Outreach</p>
+
+    {% if custom_requests %}
+        <div style="margin-bottom: 25px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;">
+            {% for req in custom_requests %}
+                {% if req.status == 'scraping' %}
+                    <div style="background-color: #ebf8ff; border-left: 4px solid #3182ce; color: #2b6cb0; padding: 18px; border-radius: 8px; font-size: 0.95rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); box-sizing: border-box;">
+                        <strong style="font-weight: 700;">⏳ Custom Extraction In Progress:</strong> We are actively scraping your custom targets for 
+                        <span style="color: #2d3748; font-weight: bold;">{{ req.city_or_region }}</span> 
+                        ({{ req.chambers_count }} target directory locations). 
+                        <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #4a5568; line-height: 1.45;">
+                            Our data engines are currently extracting, unmasking, and cleaning these database coordinates. The contacts will populate and unlock automatically right inside your main dashboard table below within 15-30 minutes!
+                        </p>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
 
     <div class="dashboard-actions" style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
         <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none;">

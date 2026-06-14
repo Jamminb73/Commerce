@@ -221,7 +221,12 @@ def leads_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    context = {**user_context, 'page_obj': page_obj}
+    # ⏳ Dynamic Pipeline Status Array Handler Context Hook
+    context = {
+        **user_context, 
+        'page_obj': page_obj,
+        'custom_requests': ChamberRequest.objects.filter(user_email__iexact=request.user.email).order_by('-id') if request.user.is_authenticated else None
+    }
     return render(request, 'leads/leads_list.html', context)
 
 
@@ -509,7 +514,7 @@ def export_leads_csv(request):
             else:
                 final_chamber = "Georgia Chamber"
 
-        # 💡 CSV LOCKDOWN: Verifies rows match a specific unmasked chamber string before outputting data
+        # 💡 DATA GUARD LOCKDOWN: Verifies rows match a specific unmasked chamber string before outputting data
         has_access = (
             final_chamber.strip().lower() in purchased_directory_names or 
             is_staff_or_admin

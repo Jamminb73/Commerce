@@ -285,7 +285,7 @@
                 {% endfor %}
                 {% for error in form.non_field_errors %}
                     <li>{{ error }}</li>
-                {% endfor %}
+                for %}
                 </ul>
             </div>
         {% endif %}
@@ -301,13 +301,13 @@
             </div>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
+        <div class="form-row" id="location-row-container">
+            <div class="form-group" id="state-group-box">
                 <label for="{{ form.state.id_for_label }}">State Focus</label>
                 {{ form.state }}
             </div>
-            <div class="form-group">
-                <label for="{{ form.city_or_region.id_for_label }}">City or Territory Regions</label>
+            <div class="form-group" id="city-group-box" style="grid-column: span 1;">
+                <label for="{{ form.city_or_region.id_for_label }}" id="city-input-label">City or Territory Regions</label>
                 {{ form.city_or_region }}
                 
                 <div id="directory-alert" style="display: none; margin-top: 8px; padding: 10px 14px; background-color: rgba(43, 108, 176, 0.08); border-left: 4px solid #2b6cb0; border-radius: 6px; font-size: 0.85rem; color: #2d3748; line-height: 1.4; box-sizing: border-box;">
@@ -358,6 +358,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const alertBox = document.getElementById("directory-alert");
     const quantitySelect = document.getElementById("id_chambers_count");
     const submitBtn = document.getElementById("submit-btn");
+    
+    // Elements added for dynamic text-block adaptation logic
+    const locationRowContainer = document.getElementById("location-row-container");
+    const stateGroupBox = document.getElementById("state-group-box");
+    const cityGroupBox = document.getElementById("city-group-box");
+    const cityInputLabel = document.getElementById("city-input-label");
+    
     let cachedCities = [];
 
     if (cityInput && alertBox) {
@@ -382,16 +389,39 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Dynamic Button Price Calculator UI
+    // Dynamic UI Component Controller Engine (Handles prices AND blocks expansion)
     if (quantitySelect && submitBtn) {
-        quantitySelect.addEventListener("change", function() {
+        function updateUIForQuantity() {
             const qty = parseInt(quantitySelect.value) || 1;
             let totalCost = qty * 8;
             if (qty === 5) {
                 totalCost = 32; // Buy 4, Get 1 Free Promo Application
             }
             submitBtn.textContent = `Submit & Go to Secure Checkout ($${totalCost}.00)`;
-        });
+
+            // 💡 INTELLIGENT BLOCK EXPANSION DANCE:
+            if (qty > 1) {
+                // Transform grid structure to full row format and convert city element to a large text box block
+                locationRowContainer.style.display = "flex";
+                locationRowContainer.style.flexDirection = "column";
+                cityGroupBox.style.gridColumn = "span 2";
+                
+                // Dynamically modify attributes to allow multi-line entries visually
+                cityInput.style.height = "110px";
+                cityInputLabel.innerHTML = `Target Cities / Regions <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(Please list your ${qty} target areas, one per line or comma-separated)</span>`;
+            } else {
+                // Revert completely back to standard single layout tracking rows
+                locationRowContainer.style.display = "grid";
+                locationRowContainer.style.gridTemplateColumns = "1fr 1fr";
+                cityGroupBox.style.gridColumn = "span 1";
+                cityInput.style.height = "auto";
+                cityInputLabel.textContent = "City or Territory Regions";
+            }
+        }
+
+        // Initialize adjustments and set up event listeners
+        quantitySelect.addEventListener("change", updateUIForQuantity);
+        updateUIForQuantity();
     }
 });
 </script>

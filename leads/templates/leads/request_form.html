@@ -197,10 +197,6 @@
             transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
         }
 
-        .form-card select {
-            height: 48px;
-        }
-
         .form-card input:focus, 
         .form-card select:focus, 
         .form-card textarea:focus {
@@ -233,15 +229,16 @@
         
         /* Interactive Pricing Banner */
         .price-badge {
-            background-color: rgba(243, 156, 18, 0.1);
-            color: #d97706;
+            background-color: rgba(56, 161, 105, 0.1);
+            color: #1e7e34;
             padding: 14px;
             border-radius: 8px;
             font-weight: 700;
             text-align: center;
             margin-bottom: 30px;
-            border: 1px solid rgba(243, 156, 18, 0.2);
-            font-size: 1.05rem;
+            border: 1px solid rgba(56, 161, 105, 0.2);
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -249,7 +246,7 @@
 
     <nav>
         <div class="nav-brand">
-            <a href="{% url 'home' %}"><h2>GA Commerce Leads</h2></a>
+            <a href="{% url 'home' %}"><h2>ChamberPipeline</h2></a>
         </div>
         <div class="nav-container">
             {% if is_authenticated_user %}
@@ -274,6 +271,7 @@
                         
                         {% if request.user.is_staff %}
                             <a href="{% url 'blog:admin_dashboard' %}" class="menu-item">✍️ Blog Dashboard</a>
+                            <a href="{% url 'admin:index' %}" class="menu-item" style="color: #d97706;">🛠️ Django Admin</a>
                         {% endif %}
                         
                         <hr>
@@ -296,22 +294,16 @@
 
         <div class="form-card">
             <h2>Request Custom Target Scrape</h2>
-            <p>Specify your territory volume pack and layout configuration rules below. We extract, clean, and map the targets straight to your lead pipeline workflow.</p>
+            <p>Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
 
             <div class="price-badge" id="live-price-indicator">
-                Selected Plan Pricing: $9.99 flat rate
+                🔒 Custom Extraction Rate: $8.00 flat per directory
             </div>
 
             <form method="POST" novalidate>
                 {% csrf_token %}
-                
-                <div class="form-group">
-                    <label class="form-label">Select Scrape Volume Tier Scope</label>
-                    {{ form.chambers_count }}
-                    {% if form.chambers_count.errors %}
-                        <div class="text-danger">{{ form.chambers_count.errors|join:", " }}</div>
-                    {% endif %}
-                </div>
+
+                <input type="hidden" name="chambers_count" value="1">
 
                 <div class="form-group">
                     <label class="form-label">Contact Email Address</label>
@@ -341,6 +333,7 @@
                 <div class="form-group">
                     <label class="form-label">Chamber of Commerce Target Names</label>
                     {{ form.chamber_name }}
+                    <div class="form-help">List the specific Chambers of Commerce (one per line or comma-separated).</div>
                     {% if form.chamber_name.errors %}
                         <div class="text-danger">{{ form.chamber_name.errors|join:", " }}</div>
                     {% endif %}
@@ -349,43 +342,20 @@
                 <div class="form-group">
                     <label class="form-label">Chamber Membership Directory URL Links</label>
                     {{ form.chamber_url }}
-                    <div class="form-help" id="url-help-text">Paste the direct link showing their public online membership directory index layout.</div>
+                    <div class="form-help" id="url-help-text">Provide the direct links showing their public online membership directory index layout.</div>
                     {% if form.chamber_url.errors %}
                         <div class="text-danger">{{ form.chamber_url.errors|join:", " }}</div>
                     {% endif %}
                 </div>
 
                 <div style="margin-top: 32px; text-align: center;">
-                    {% include "leads/components/base_button.html" with button_text="Submit Request & Calculate Scope" button_type="submit" button_classes="w-100" %}
+                    {% include "leads/components/base_button.html" with button_text="Submit & Go to Secure Checkout ($8.00)" button_type="submit" button_classes="w-100" %}
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        const volumeSelector = document.getElementById('id_chambers_count');
-        const priceIndicator = document.getElementById('live-price-indicator');
-        const urlHelp = document.getElementById('url-help-text');
-
-        if (volumeSelector) {
-            volumeSelector.addEventListener('change', function() {
-                const val = parseInt(this.value);
-                if (val === 1) {
-                    priceIndicator.innerText = "Selected Plan Pricing: $9.99 flat rate";
-                    urlHelp.innerText = "Paste the direct link showing their public online membership directory index layout.";
-                } else if (val === 5) {
-                    priceIndicator.innerText = "Selected Plan Pricing: $49.00 Regional Bundle Package";
-                    urlHelp.innerText = "Provide up to 5 individual directory source URLs (one per line).";
-                } else if (val === 10) {
-                    priceIndicator.innerText = "Selected Plan Pricing: $99.00 Expanded Regional Pack";
-                    urlHelp.innerText = "Provide up to 10 individual directory source URLs (one per line).";
-                } else {
-                    priceIndicator.innerText = "Selected Plan Pricing: Custom Enterprise Quote ($10.00 / chamber)";
-                    urlHelp.innerText = "Paste as many target directory URLs as needed. We will count them and email you a precise invoice link.";
-                }
-            });
-        }
-
         function toggleDropdown(event) {
             event.stopPropagation();
             var menu = document.getElementById("profileMenu");

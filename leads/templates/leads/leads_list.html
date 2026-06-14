@@ -177,27 +177,6 @@
             background-color: rgba(245, 158, 11, 0.05);
         }
 
-        .disabled-premium {
-            color: #a0aec0 !important;
-            background-color: #f8fafc;
-            cursor: not-allowed;
-            padding: 12px 16px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .badge-upgrade {
-            background: #e2e8f0;
-            color: #4a5568;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 700;
-        }
-
         .text-warning {
             color: #dc2626 !important;
         }
@@ -224,21 +203,6 @@
             cursor: pointer;
         }
         .btn-export:hover { background: #2f855a; }
-
-        .btn-export-locked {
-            background: #e2e8f0;
-            color: #718096;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            border: 1px dashed #cbd5e0;
-        }
 
         /* --- Table Layout Row Styling --- */
         .table-responsive {
@@ -390,16 +354,7 @@
                         
                         {% if request.user.is_staff %}
                             <a href="{% url 'blog:admin_dashboard' %}" class="menu-item">✍️ Blog Dashboard</a>
-                        {% endif %}
-                        
-                        {% if is_premium_member %}
-                            <a href="{% url 'stripe_customer_portal' %}" class="menu-item text-warning">💳 Cancel Subscription</a>
-                        {% else %}
-                            <div class="menu-item disabled-premium">
-                                <span>🔒 Premium Directory Access</span>
-                                <span class="badge-upgrade">Locked</span>
-                            </div>
-                            <a href="{% url 'purchase' %}" class="menu-item purchase-highlight">🚀 Go Premium ($49)</a>
+                            <a href="{% url 'admin:index' %}" class="menu-item text-warning">🛠️ Django Admin</a>
                         {% endif %}
                         
                         <hr>
@@ -417,15 +372,9 @@
     <p class="subtitle">Verified Professional Contacts for Networking & Outreach</p>
 
     <div class="dashboard-actions" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-        {% if is_premium_member %}
-            <a href="#" style="text-decoration: none;">
-                {% include "leads/components/base_button.html" with button_text="📥 Export New Leads to CSV" button_classes="btn-export" %}
-            </a>
-        {% else %}
-            <a href="{% url 'purchase' %}" style="text-decoration: none;">
-                {% include "leads/components/base_button.html" with button_text="🔒 Export to CRM (Premium Only)" button_classes="btn-export-locked" %}
-            </a>
-        {% endif %}
+        <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none;">
+            {% include "leads/components/base_button.html" with button_text="🎯 Order Custom Scrape Pipeline" button_classes="btn-export" %}
+        </a>
     </div>
 
     <div class="table-responsive">
@@ -452,7 +401,7 @@
                             <td><span class="badge-chamber">{{ lead.chamber }}</span></td>
                             <td>
                                 <span class="email-cell" style="color: #a0aec0;"><span class="email-icon" style="color:#cbd5e0">✉</span> {{ lead.email }}</span> 
-                                <a href="{% url 'purchase' %}" class="upgrade-link">[UPGRADE]</a>
+                                <a href="{% url 'create_checkout_session' lead.directory_id %}" class="upgrade-link">UNLOCK DIRECTORY ($9.99)</a>
                             </td>
                         {% endif %}
                     </tr>
@@ -491,10 +440,10 @@
         <div class="card-body text-white" style="padding: 20px; text-align: center;">
             <h3 style="font-weight: 700; margin-top: 0; margin-bottom: 0.5rem; color: #ffffff; font-size: 1.6rem; letter-spacing: -0.5px;">Don't see the city or chamber you need?</h3>
             <p class="opacity-75 mb-4" style="font-size: 1.05rem; max-width: 630px; margin-left: auto; margin-right: auto; margin-bottom: 24px; color: rgba(255,255,255,0.85);">
-                We build custom lead pipelines nationwide. Specify your target directory requirements, and we will extract, clean, and deliver the verified contacts straight to your dashboard workflow starting at just $10.00.
+                We build custom lead pipelines nationwide. Specify your target directory requirements, and we will extract, clean, and deliver the verified contacts straight to your dashboard workflow for a discounted custom rate of only $8.00.
             </p>
             <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none; display: inline-block;">
-                {% include "leads/components/base_button.html" with button_text="Request Custom Scrape ($10.00)" button_classes="text-white" %}
+                {% include "leads/components/base_button.html" with button_text="Request Custom Scrape ($8.00)" button_classes="text-white" %}
             </a>
         </div>
     </div>

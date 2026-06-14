@@ -19,41 +19,30 @@ STATE_CHOICES = [
     ('WI', 'Wisconsin'), ('WY', 'Wyoming')
 ]
 
-COUNT_CHOICES = [
-    (1, 'Single Local Area / Chamber Target ($9.99)'),
-    (5, 'Regional Bundle Package (Up to 5 Areas) ($49.00)'),
-    (10, 'Expanded Regional Pack (Up to 10 Areas) ($99.00)'),
-    (20, 'Enterprise Multi-Region / Full State (Custom Quote - $10/ch)'),
-]
-
 class ChamberRequestForm(forms.ModelForm):
-    """Handles nationwide user-facing requests for custom chamber directory scrapes with tiered options."""
+    """Handles user-facing requests for custom chamber directory scrapes with fixed $8 pricing workflow."""
     
     state = forms.ChoiceField(
         choices=STATE_CHOICES,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    chambers_count = forms.ChoiceField(
-        choices=COUNT_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_chambers_count'})
-    )
 
-    # Overridden definitions to drop database validation boundaries on the front-end user
+    # Overridden definitions to accept multi-line string text fields from HTML inputs securely
     chamber_name = forms.CharField(
-        required=False,
+        required=True,  # Changed to True to ensure they tell you what to scrape before checking out
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': '(Optional) Specify preferred local chambers, or leave blank for automatic discovery...'
+            'placeholder': 'List the specific Chambers of Commerce (one per line or comma-separated)...'
         })
     )
     
     chamber_url = forms.CharField(
-        required=False,
+        required=True,  # Ensure you get the URL up front so your pipeline knows where to point
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': '(Optional) Paste specific directory index URLs if you have them, or leave blank to automate lookups...'
+            'placeholder': 'Provide the direct links showing their public online membership directory index layout...'
         })
     )
 
@@ -69,6 +58,8 @@ class ChamberRequestForm(forms.ModelForm):
                 'class': 'form-control', 
                 'placeholder': 'e.g., Austin, Round Rock, Buda'
             }),
+            # Intercepts the choices tier and cleanly outputs a hidden value to bind with HTML input fields
+            'chambers_count': forms.HiddenInput(),
         }
 
     def clean_state(self):

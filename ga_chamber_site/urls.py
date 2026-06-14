@@ -12,8 +12,7 @@ from leads.views import (
     purchase_view,
     create_checkout_session,
     payment_success_view,
-    payment_cancel_view,
-    manual_upgrade_test,     
+    payment_cancel_view,     
     stripe_webhook,
     stripe_customer_portal,  
     request_custom_scrape,          # Imported your intake view
@@ -45,9 +44,6 @@ urlpatterns = [
     
     # Secure Backend Blog App Router
     path('blog/', include('blog.urls')), 
-    
-    # Local Development Cheat Code Backdoor
-    path('manual-upgrade/', manual_upgrade_test, name='manual_upgrade'),
     
     # Stripe Checkout & Payment Flows (Updated with dynamic request_id parameter)
     path('purchase/', purchase_view, name='purchase'),

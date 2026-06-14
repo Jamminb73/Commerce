@@ -204,6 +204,29 @@
         }
         .btn-export:hover { background: #2f855a; }
 
+       /* Sleek secondary design with a professional medium blue accent */
+        .btn-csv {
+            background: #ffffff;
+            color: #2b6cb0;
+            border: 1px solid #e2e8f0;
+            padding: 6px 14px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .btn-csv:hover {
+            background: #2b6cb0;
+            color: #ffffff;
+            border-color: #2b6cb0;
+            box-shadow: 0 4px 12px rgba(43, 108, 176, 0.15);
+        }
+
         /* --- Table Layout Row Styling --- */
         .table-responsive {
             width: 100%;
@@ -371,9 +394,22 @@
 
     <p class="subtitle">Verified Professional Contacts for Networking & Outreach</p>
 
-    <div class="dashboard-actions" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+    <div class="dashboard-actions" style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
         <a href="{% url 'request_custom_scrape' %}" style="text-decoration: none;">
             {% include "leads/components/base_button.html" with button_text="🎯 Order Custom Scrape Pipeline" button_classes="btn-export" %}
+        </a>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: #4a5568; font-size: 0.9rem; font-weight: 500;">
+        <div>
+            <span>Showing leads <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> of <strong>{{ page_obj.paginator.count }}</strong></span>
+        </div>
+        <a href="{% url 'export_leads_csv' %}" class="btn-csv">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/>
+            </svg>
+            Export to CSV
         </a>
     </div>
 
@@ -416,7 +452,7 @@
 
     <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #edf2f7; color: #4a5568;">
         <div class="pagination-info" style="font-size: 0.9rem; font-weight: 500;">
-            <span>Showing leads {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+            <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         </div>
 
         <div class="pagination-buttons" style="display: flex; align-items: center; gap: 6px;">
@@ -426,7 +462,7 @@
             {% endif %}
 
             <span class="current-page" style="margin: 0 10px; font-weight: 600; font-size: 0.9rem; color: var(--primary-bg);">
-                Page {{ page_obj.number }} | {{ page_obj.paginator.num_pages }}
+                {{ page_obj.number }}
             </span>
 
             {% if page_obj.has_next %}

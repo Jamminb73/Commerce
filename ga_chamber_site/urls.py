@@ -14,8 +14,10 @@ from leads.views import (
     payment_success_view,
     payment_cancel_view,     
     stripe_webhook,
-    request_custom_scrape,          # Imported your intake view
-    request_success_view,           # Imported your success view
+    request_custom_scrape,          
+    request_success_view,           
+    export_leads_csv,               
+    active_directories_api,         # <-- Added the hidden live city lookup API endpoint
 )
 
 # Dictionary mapping for the sitemap framework
@@ -36,6 +38,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', landing_page, name='home'),
     path('leads/', leads_list, name='leads_list'),  
+    path('leads/export/', export_leads_csv, name='export_leads_csv'),  
+    
+    # Hidden API Routing Layer
+    path('api/active-cities/', active_directories_api, name='active_cities_api'),  # <-- Registered the city list query route
     
     # Custom Dynamic Scraping Requests System
     path('request-scrape/', request_custom_scrape, name='request_custom_scrape'),

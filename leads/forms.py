@@ -27,22 +27,23 @@ class ChamberRequestForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    # Overridden definitions to accept multi-line string text fields from HTML inputs securely
+    # Removed the data homework wall: Changed required to False so they can let our engine hunt it down
     chamber_name = forms.CharField(
-        required=True,  # Changed to True to ensure they tell you what to scrape before checking out
+        required=False,  
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': 'List the specific Chambers of Commerce (one per line or comma-separated)...'
+            'placeholder': 'e.g., Cobb County Chamber (Leave blank to let our team source the correct directory for you)'
         })
     )
     
+    # Removed the link barrier: Changed required to False to maximize hands-off ease of use
     chamber_url = forms.CharField(
-        required=True,  # Ensure you get the URL up front so your pipeline knows where to point
+        required=False,  
         widget=forms.Textarea(attrs={
             'class': 'form-control', 
             'rows': '3', 
-            'placeholder': 'Provide the direct links showing their public online membership directory index layout...'
+            'placeholder': 'Leave blank to let our data engine locate the primary membership indexing links automatically'
         })
     )
 

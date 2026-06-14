@@ -1,3 +1,4 @@
+import csv
 import uuid
 import datetime
 import stripe
@@ -5,6 +6,7 @@ from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout  
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
@@ -28,14 +30,23 @@ def landing_page(request):
 def request_custom_scrape(request):
     """
     Processes user requests for a custom scrape.
-    Anchored cleanly to your new discounted target price point of $8.00.
+    Intercepts pre-existing database regions to bypass delays and route directly to instant purchase.
     """
     if request.method == 'POST':
         form = ChamberRequestForm(request.POST)
         if form.is_valid():
             chamber_request = form.save(commit=False)
             
-            # Align database parameters with your discounted $8.00 target price point
+            # Intercept: Check if the user is manually requesting a territory that is already active in the store
+            requested_city = form.cleaned_data.get('city_or_region', '').strip()
+            existing_directory = ChamberDirectory.objects.filter(city_or_region__iexact=requested_city, is_active=True).first()
+            
+            if existing_directory:
+                # Direct route to instant catalogue fulfillment bypass
+                messages.info(request, f"Good news! {requested_city} data is already cataloged. Transferring to instant unlock portal.")
+                return redirect('create_checkout_session', request_id=existing_directory.id)
+            
+            # Continue with normal custom pipeline extraction assignment ($8.00)
             chamber_request.estimated_cost = 8.00
             price_string = "$8.00"
 
@@ -132,12 +143,10 @@ def leads_list(request):
     if request.user.is_authenticated:
         purchased_directory_ids = set(UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True))
         purchased_lead_ids = set(UserPurchase.objects.filter(user=request.user, lead__isnull=False).values_list('lead_id', flat=True))
-        # Family & Friends / Admin Override: staff get total access automatically
         is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     processed_leads = []
     for lead in raw_leads:
-        # Check if user has unlocked this item, or has the global "All Access" Admin/Staff status
         has_purchased_item = (
             (lead.directory_id in purchased_directory_ids) or 
             (lead.id in purchased_lead_ids) or
@@ -161,7 +170,6 @@ def leads_list(request):
         final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
 
         if has_purchased_item:
-            # 1. UNLOCKED DATA FLOW
             first = getattr(lead, 'first_name', '') or ''
             last = getattr(lead, 'last_name', '') or ''
             
@@ -181,7 +189,6 @@ def leads_list(request):
                 'is_locked': False  
             })
         else:
-            # 2. MASKED DATA FLOW
             if lead_email and '@' in lead_email:
                 email_parts = lead_email.split('@')
                 masked_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
@@ -287,12 +294,11 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "No active chamber directories are configured for acquisition at this time.")
                 return redirect('leads_list')
 
-        # Try to look for a catalog directory matching this ID first
         try:
             target_directory = ChamberDirectory.objects.get(id=request_id)
             package_name = f"Premium Access: {target_directory.name} Directory"
             package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
-            amount_in_cents = 999  # Adjusted to your target $9.99 pricing strategy
+            amount_in_cents = 999  
             
             new_order = Order.objects.create(
                 user=request.user,
@@ -309,7 +315,6 @@ def create_checkout_session(request, request_id):
             }
 
         except ChamberDirectory.DoesNotExist:
-            # Fallback to checking if it is an un-scraped custom pipeline request
             scrape_request = ChamberRequest.objects.get(id=request_id)
             
             if scrape_request.user_email != request.user.email:
@@ -318,7 +323,7 @@ def create_checkout_session(request, request_id):
                 
             package_name = "Premium Custom Chamber Dataset Extraction"
             package_description = f"Target Focus: {scrape_request.chamber_name}. Target URL: {scrape_request.chamber_url}"
-            amount_in_cents = 800  # Adjusted to your lower custom-request incentive rate ($8.00)
+            amount_in_cents = 800  
             
             new_order = Order.objects.create(
                 user=request.user,
@@ -381,10 +386,7 @@ def payment_cancel_view(request):
 
 @csrf_exempt
 def stripe_webhook(request):
-    """
-    Listens for verified webhook calls from Stripe to fulfill purchases automatically.
-    Creates precision UserPurchase asset links instead of flipping a global premium checkmark.
-    """
+    """Listens for verified webhook calls from Stripe to fulfill purchases automatically."""
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     event = None
@@ -415,7 +417,6 @@ def stripe_webhook(request):
         if not user_id:
             return HttpResponse(status=200)
 
-        # 1. Mark internal tracking logs as paid
         order = Order.objects.filter(order_id=order_id).first()
         if order:
             order.is_paid = True
@@ -424,13 +425,11 @@ def stripe_webhook(request):
         try:
             user_obj = User.objects.get(id=user_id)
             
-            # 2. GRANULAR FULFILLMENT: Check what asset type they checked out with
             if purchase_type == 'directory':
                 directory_id = metadata.get('directory_id')
                 if directory_id:
                     target_directory = ChamberDirectory.objects.filter(id=directory_id).first()
                     if target_directory:
-                        # Build a permanent access connection in your UserPurchase table
                         UserPurchase.objects.get_or_create(
                             user=user_obj,
                             directory=target_directory,
@@ -442,7 +441,6 @@ def stripe_webhook(request):
                 if scrape_request_id:
                     scrape_request = ChamberRequest.objects.filter(id=scrape_request_id).first()
                     if scrape_request:
-                        # Flip your custom pipeline request status from 'pending' to 'scraping'
                         scrape_request.status = 'scraping'
                         scrape_request.save()
                         
@@ -450,3 +448,78 @@ def stripe_webhook(request):
             pass
 
     return HttpResponse(status=200)
+
+
+@login_required
+def export_leads_csv(request):
+    """Dynamically streams the user's filtered chamber leads list into a downloadable CSV spreadsheet."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="georgia_chamber_leads.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Name', 'First Name', 'Last Name', 'Title', 'Chamber', 'Organization', 'Email', 'Phone'])
+
+    leads_queryset = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
+    
+    search_query = request.GET.get('q', '').strip()
+    chamber_filter = request.GET.get('chamber', '').strip()
+
+    if search_query:
+        leads_queryset = leads_queryset.filter(title__icontains=search_query) | leads_queryset.filter(name__icontains=search_query)
+
+    if chamber_filter:
+        leads_queryset = leads_queryset.filter(organization__icontains=chamber_filter) | leads_queryset.filter(chamber__icontains=chamber_filter)
+
+    purchased_directory_ids = set(UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True))
+    purchased_lead_ids = set(UserPurchase.objects.filter(user=request.user, lead__isnull=False).values_list('lead_id', flat=True))
+    is_staff_or_admin = request.user.is_staff or request.user.is_superuser
+
+    for lead in leads_queryset:
+        has_access = (
+            (lead.directory_id in purchased_directory_ids) or 
+            (lead.id in purchased_lead_ids) or
+            is_staff_or_admin
+        )
+
+        lead_email = getattr(lead, 'email', "") or ""
+        if not has_access:
+            if lead_email and '@' in lead_email:
+                email_parts = lead_email.split('@')
+                lead_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
+            else:
+                lead_email = "No Email Provided"
+
+        first = getattr(lead, 'first_name', '') or ''
+        last = getattr(lead, 'last_name', '') or ''
+        if has_access:
+            full_name = f"{first} {last}".strip() or getattr(lead, 'name', '') or "Chamber Member"
+        else:
+            full_name = "Chamber Member"
+
+        org_str = getattr(lead, 'organization', '') or ''
+        chamber_str = getattr(lead, 'chamber', '') or ''
+        final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
+
+        lead_title = getattr(lead, 'title', "")
+        title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
+        final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
+
+        writer.writerow([
+            full_name,
+            first if has_access else '',
+            last if has_access else '',
+            final_title,
+            final_chamber,
+            org_str,
+            lead_email,
+            getattr(lead, 'phone', '') or ''
+        ])
+
+    return response
+
+
+def active_directories_api(request):
+    """Serves a raw array of lowercase city names currently cataloged in the database layout."""
+    cities = ChamberDirectory.objects.filter(is_active=True).values_list('city_or_region', flat=True).distinct()
+    cleaned_cities = [str(c).strip().lower() for c in cities if c]
+    return JsonResponse({'active_cities': cleaned_cities})

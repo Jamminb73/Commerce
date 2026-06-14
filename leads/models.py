@@ -146,10 +146,6 @@ class OrderItem(models.Model):
 
 
 class UserPurchase(models.Model):
-    """
-    The source of truth access control wall. 
-    If a record doesn't exist here, the user cannot see it or download it.
-    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
     directory = models.ForeignKey(ChamberDirectory, on_delete=models.CASCADE, null=True, blank=True)
     lead = models.ForeignKey(ChamberLead, on_delete=models.CASCADE, null=True, blank=True)
@@ -158,13 +154,20 @@ class UserPurchase(models.Model):
 
     class Meta:
         ordering = ['-purchased_at']
-        # Guarantees the same user doesn't get duplicate access records for the exact same asset
-        unique_together = [['user', 'directory'], ['user', 'lead']]
-
-    def __str__(self):
-        asset = self.directory.name if self.directory else (self.lead.email if self.lead else "Asset")
-        return f"{self.user.username} has active paid access to: {asset}"
-
+        constraints = [
+            # Only enforces uniqueness for directory purchases if lead is null
+            models.UniqueConstraint(
+                fields=['user', 'directory'], 
+                condition=models.Q(lead__isnull=True),
+                name='unique_user_directory_purchase'
+            ),
+            # Only enforces uniqueness for individual lead purchases if directory is null
+            models.UniqueConstraint(
+                fields=['user', 'lead'], 
+                condition=models.Q(directory__isnull=True),
+                name='unique_user_lead_purchase'
+            )
+        ]
 
 # --- Automatic Profile Creation Signals ---
 

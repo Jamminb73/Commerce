@@ -8,47 +8,143 @@
         :root {
             --primary-bg: #1a2a6c;
             --accent-color: #f39c12;
-            --text-light: #ffffff;
             --text-dark: #2d3748;
+            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
 
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            line-height: 1.6; 
-            margin: 0; 
-            color: var(--text-dark); 
-            background-color: #f4f6f9; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            box-sizing: border-box;
         }
-        
-        /* Navigation Styles */
-        nav {
-            background: var(--primary-bg);
-            padding: 15px 30px;
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            box-sizing: border-box;
+        }
+
+        header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
         }
 
-        .nav-brand h2 {
-            color: white;
+        header h1 {
+            color: var(--primary-bg);
             margin: 0;
-            font-size: 1.4rem;
+            font-size: 2rem;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
 
-        .nav-brand a {
-            text-decoration: none;
+        .subtitle {
+            font-size: 1.05rem;
+            color: #718096;
+            margin-top: 5px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
         }
 
+        /* --- Form Input Fields Architecture Styling --- */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"], input[type="email"], textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--text-dark);
+            box-sizing: border-box;
+            background-color: #f8fafc;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-bg);
+            background-color: #ffffff;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+            color: white;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(56, 161, 105, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        /* --- Profile Dropdown Layout Styles --- */
         .nav-container {
             display: flex;
             align-items: center;
             gap: 20px;
         }
 
-        /* --- Profile Dropdown Layout Styles --- */
         .profile-dropdown {
             position: relative;
             display: inline-block;
@@ -72,8 +168,8 @@
         }
 
         .avatar-fallback {
-            background-color: white;
-            color: var(--primary-bg);
+            background-color: var(--primary-bg);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -115,12 +211,6 @@
             word-break: break-all;
         }
 
-        .dropdown-content hr {
-            border: 0;
-            border-top: 1px solid #e2e8f0;
-            margin: 0;
-        }
-
         .menu-item {
             color: var(--text-dark);
             padding: 12px 16px;
@@ -134,120 +224,13 @@
         .menu-item:hover {
             background-color: #f1f5f9;
         }
-
-        /* --- Form Container & Card Styles --- */
-        .form-wrapper {
-            max-width: 650px;
-            margin: 60px auto;
-            padding: 0 20px;
-        }
-
-        .form-card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
-        }
-
-        .form-card h2 {
-            color: var(--primary-bg);
-            font-weight: 700;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 8px;
-            font-size: 1.8rem;
-            letter-spacing: -0.5px;
-        }
-
-        .form-card p {
-            color: #718096;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-        }
-
-        .form-group {
-            margin-bottom: 22px;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #334155;
-            font-size: 0.9rem;
-        }
-
-        /* Input Elements & Select Textareas */
-        .form-card input[type="text"],
-        .form-card input[type="email"],
-        .form-card select,
-        .form-card textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 0.95rem;
-            color: var(--text-dark);
-            background-color: #ffffff;
-            font-family: inherit;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        }
-
-        .form-card input:focus, 
-        .form-card select:focus, 
-        .form-card textarea:focus {
-            outline: none;
-            border-color: var(--primary-bg);
-            box-shadow: 0 0 0 3px rgba(26, 42, 108, 0.1);
-        }
-
-        /* Grid Row Layout Alignment */
-        .form-row {
-            display: flex;
-            gap: 16px;
-        }
-
-        .col-state { width: 35%; }
-        .col-city { width: 65%; }
-
-        .form-help {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            margin-top: 6px;
-        }
-
-        .text-danger {
-            color: #dc2626;
-            font-size: 0.85rem;
-            margin-top: 4px;
-            font-weight: 500;
-        }
-        
-        /* Interactive Pricing Banner */
-        .price-badge {
-            background-color: rgba(56, 161, 105, 0.1);
-            color: #1e7e34;
-            padding: 14px;
-            border-radius: 8px;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 30px;
-            border: 1px solid rgba(56, 161, 105, 0.2);
-            font-size: 1.1rem;
-            letter-spacing: 0.5px;
-        }
     </style>
 </head>
 <body>
 
-    <nav>
-        <div class="nav-brand">
-            <a href="{% url 'home' %}"><h2>ChamberPipeline</h2></a>
-        </div>
+<div class="container">
+    <header>
+        <h1>ChamberPipeline</h1>
         <div class="nav-container">
             {% if is_authenticated_user %}
                 <div class="profile-dropdown">
@@ -264,116 +247,123 @@
                             <strong>{{ username }}</strong>
                             <span class="user-email">{{ user_email }}</span>
                         </div>
-                        <hr>
-                        
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;">
+                        <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
                         <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
                         <a href="{% url 'request_custom_scrape' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">🎯 Request Custom Scrape</a>
-                        
-                        {% if request.user.is_staff %}
-                            <a href="{% url 'blog:admin_dashboard' %}" class="menu-item">✍️ Blog Dashboard</a>
-                            <a href="{% url 'admin:index' %}" class="menu-item" style="color: #d97706;">🛠️ Django Admin</a>
-                        {% endif %}
-                        
-                        <hr>
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;">
                         <a href="{% url 'logout' %}" class="menu-item" style="color: #718096;">🚪 Logout</a>
                     </div>
                 </div>
+            {% else %}
+                <a href="{% url 'home' %}" class="menu-item">Home</a>
             {% endif %}
         </div>
-    </nav>
+    </header>
 
-    <div class="form-wrapper">
-        
-        {% if messages %}
-            {% for message in messages %}
-                <div style="padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500; background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+    <h2 style="color: var(--primary-bg); text-align: center; margin-top: 10px; margin-bottom: 5px; font-size: 1.8rem; font-weight: 700;">Request Custom Target Scrape</h2>
+    <p class="subtitle">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
 
-        <div class="form-card">
-            <h2>Request Custom Target Scrape</h2>
-            <p>Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
-
-            <div class="price-badge" id="live-price-indicator">
-                🔒 Custom Extraction Rate: $8.00 flat per directory
-            </div>
-
-            <form method="POST" novalidate>
-                {% csrf_token %}
-
-                <input type="hidden" name="chambers_count" value="1">
-
-                <div class="form-group">
-                    <label class="form-label">Contact Email Address</label>
-                    {{ form.user_email }}
-                    {% if form.user_email.errors %}
-                        <div class="text-danger">{{ form.user_email.errors|join:", " }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group col-state">
-                        <label class="form-label">State Focus</label>
-                        {{ form.state }}
-                        {% if form.state.errors %}
-                            <div class="text-danger">{{ form.state.errors|join:", " }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group col-city">
-                        <label class="form-label">City or Territory Regions</label>
-                        {{ form.city_or_region }}
-                        {% if form.city_or_region.errors %}
-                            <div class="text-danger">{{ form.city_or_region.errors|join:", " }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Chamber of Commerce Target Names</label>
-                    {{ form.chamber_name }}
-                    <div class="form-help">List the specific Chambers of Commerce (one per line or comma-separated).</div>
-                    {% if form.chamber_name.errors %}
-                        <div class="text-danger">{{ form.chamber_name.errors|join:", " }}</div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Chamber Membership Directory URL Links</label>
-                    {{ form.chamber_url }}
-                    <div class="form-help" id="url-help-text">Provide the direct links showing their public online membership directory index layout.</div>
-                    {% if form.chamber_url.errors %}
-                        <div class="text-danger">{{ form.chamber_url.errors|join:", " }}</div>
-                    {% endif %}
-                </div>
-
-                <div style="margin-top: 32px; text-align: center;">
-                    {% include "leads/components/base_button.html" with button_text="Submit & Go to Secure Checkout ($8.00)" button_type="submit" button_classes="w-100" %}
-                </div>
-            </form>
+    <div class="alert alert-success text-center mb-4" style="background-color: rgba(56, 161, 105, 0.05); border: 1px solid #38a169; border-radius: 8px; padding: 14px; margin-bottom: 25px; box-sizing: border-box;">
+        <span style="font-weight: 700; color: #2f855a; font-size: 1rem;">🔒 Custom Extraction Rate: $8.00 flat per directory</span>
+        <div style="color: #718096; font-size: 0.85rem; margin-top: 5px; font-style: italic; font-weight: 500; line-height: 1.4;">
+            Note: If our active inventory framework determines your target territory has already been cataloged, your order parameters will automatically transition to an <strong>Instant Directory Unlock ($9.99)</strong> so you can bypass standard pipeline queues and download the data right away.
         </div>
     </div>
 
-    <script>
-        function toggleDropdown(event) {
-            event.stopPropagation();
-            var menu = document.getElementById("profileMenu");
-            if (menu.style.display === "block") {
-                menu.style.display = "none";
-            } else {
-                menu.style.display = "block";
-            }
-        }
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="{{ form.user_email.id_for_label }}">Contact Email Address</label>
+            {{ form.user_email }}
+        </div>
 
-        window.onclick = function(event) {
-            var menu = document.getElementById("profileMenu");
-            if (menu && menu.style.display === "block") {
-                if (!event.target.closest('.profile-dropdown')) {
-                    menu.style.display = "none";
-                }
-            }
+        <div class="form-row">
+            <div class="form-group">
+                <label for="{{ form.state.id_for_label }}">State Focus</label>
+                {{ form.state }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.city_or_region.id_for_label }}">City or Territory Regions</label>
+                {{ form.city_or_region }}
+                
+                <div id="directory-alert" style="display: none; margin-top: 8px; padding: 10px 14px; background-color: rgba(43, 108, 176, 0.08); border-left: 4px solid #2b6cb0; border-radius: 6px; font-size: 0.85rem; color: #2d3748; line-height: 1.4; box-sizing: border-box;">
+                    🎯 <strong>Instant Download Available:</strong> Our data engine has already scraped this specific region! Submitting this form will securely skip production delays and route your session to the catalog interface to unlock the file immediately for <strong>$9.99</strong>.
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.chamber_name.id_for_label }}">Chamber of Commerce Target Names <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(optional)</span></label>
+            {{ form.chamber_name }}
+            <span style="font-size: 0.8rem; color: #718096; font-weight: 500;">List the specific Chambers of Commerce (one per line or comma-separated).</span>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.chamber_url.id_for_label }}">Chamber Membership Directory URL Links <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(optional)</span></label>
+            {{ form.chamber_url }}
+            <span style="font-size: 0.8rem; color: #718096; font-weight: 500;">Provide the direct links showing their public online membership directory index layout.</span>
+        </div>
+
+        <button type="submit" class="btn-submit">Submit & Go to Secure Checkout ($8.00)</button>
+    </form>
+</div>
+
+<script>
+function toggleDropdown(event) {
+    event.stopPropagation();
+    var menu = document.getElementById("profileMenu");
+    if (menu.style.display === "block") {
+        menu.style.display = "none";
+    } else {
+        menu.style.display = "block";
+    }
+}
+
+window.onclick = function(event) {
+    var menu = document.getElementById("profileMenu");
+    if (menu && menu.style.display === "block") {
+        if (!event.target.closest('.profile-dropdown')) {
+            menu.style.display = "none";
         }
-    </script>
+    }
+}
+
+// Client-Side Async Real-Time Active Directory City Verification Loop
+document.addEventListener("DOMContentLoaded", function() {
+    const cityInput = document.getElementById("id_city_or_region");
+    const alertBox = document.getElementById("directory-alert");
+    let cachedCities = [];
+
+    if (cityInput && alertBox) {
+        // Query database inventory layer silently on initial page rendering
+        fetch("{% url 'active_cities_api' %}")
+            .then(response => response.json())
+            .then(data => {
+                cachedCities = data.active_cities;
+            })
+            .catch(err => console.error("Database directory coordinates sync error:", err));
+
+        // Listen for live client layout inputs
+        cityInput.addEventListener("input", function() {
+            const userInput = cityInput.value.trim().toLowerCase();
+            
+            // Smart conditional look-up loop to check cross-containment parameters
+            const matchFound = cachedCities.some(function(city) {
+                return userInput.includes(city) || city.includes(userInput);
+            });
+            
+            // Toggle visibility parameter block
+            if (userInput.length > 2 && matchFound) {
+                alertBox.style.display = "block";
+            } else {
+                alertBox.style.display = "none";
+            }
+        });
+    }
+});
+</script>
+
 </body>
 </html>

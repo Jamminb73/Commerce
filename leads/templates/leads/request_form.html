@@ -271,7 +271,7 @@
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST" action="{% url 'request_custom_scrape' %}">
         {% csrf_token %}
         
         <div class="form-group">

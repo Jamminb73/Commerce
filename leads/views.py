@@ -4,6 +4,7 @@ import datetime
 import stripe
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse  # <-- Imported for secure dynamic reverse routing
 from django.contrib.auth import login, authenticate, logout  
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -77,7 +78,10 @@ def request_custom_scrape(request):
                 request, 
                 "Your custom scrape request has been logged! Redirecting to secure checkout..."
             )
-            return redirect('create_checkout_session', request_id=chamber_request.id)
+            
+            # 💡 SAFE ROUTING FIX: Utilizing reverse matching to ensure trailing slashes play nice with URL parameters
+            checkout_url = reverse('create_checkout_session', kwargs={'request_id': chamber_request.id})
+            return redirect(f"{checkout_url}?type=custom")
     else:
         initial_data = {}
         if request.user.is_authenticated:
@@ -136,35 +140,37 @@ def leads_list(request):
     }
 
     # Compile the active set of directories this specific user has paid access to
-    purchased_directory_ids = set()
-    purchased_lead_ids = set()
+    purchased_directory_names = set()
     is_staff_or_admin = False
     
     if request.user.is_authenticated:
-        purchased_directory_ids = set(UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True))
-        purchased_lead_ids = set(UserPurchase.objects.filter(user=request.user, lead__isnull=False).values_list('lead_id', flat=True))
+        # Get all purchased directory models, and map access strictly by their string names
+        purchased_directories = ChamberDirectory.objects.filter(
+            id__in=UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True)
+        )
+        purchased_directory_names = set([d.name.strip().lower() for d in purchased_directories if d.name])
         is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     processed_leads = []
     for lead in raw_leads:
-        has_purchased_item = (
-            (lead.directory_id in purchased_directory_ids) or 
-            (lead.id in purchased_lead_ids) or
-            is_staff_or_admin
-        )
-
-        lead_email = getattr(lead, 'email', "") or ""
         org_str = getattr(lead, 'organization', '') or ''
         chamber_str = getattr(lead, 'chamber', '') or ''
         final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
         
         if final_chamber.lower() in ["general", "false", "none"]:
-            if lead_email and '@' in lead_email:
-                domain = lead_email.split('@')[1].split('.')[0]
+            if getattr(lead, 'email', '') and '@' in lead.email:
+                domain = lead.email.split('@')[1].split('.')[0]
                 final_chamber = f"{domain.upper()} Chamber"
             else:
                 final_chamber = "Georgia Chamber"
 
+        # 💡 DATA GUARD LOCKDOWN: Verifies if the lead belongs strictly to an unmasked chamber string the user bought
+        has_purchased_item = (
+            final_chamber.strip().lower() in purchased_directory_names or 
+            is_staff_or_admin
+        )
+
+        lead_email = getattr(lead, 'email', "") or ""
         lead_title = getattr(lead, 'title', "")
         title_str = str(lead_title).strip() if lead_title else "Chamber Executive"
         final_title = "Chamber Executive" if title_str.lower() in ["false", "", "none"] else title_str
@@ -277,7 +283,7 @@ def register_view(request):
 def create_checkout_session(request, request_id):
     """
     Unified Stripe Checkout Engine.
-    Handles existing catalog directories ($9.99) and custom on-demand requests ($8.00).
+    Segregates inventory assets and custom pipelines cleanly using explicit routing arguments.
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -285,37 +291,11 @@ def create_checkout_session(request, request_id):
     try:
         stripe.api_key = settings.STRIPE_SECRET_KEY
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
+        checkout_type = request.GET.get('type', 'directory') # 💡 Sensor: Checks if custom type parameter exists
 
-        if request_id == 0:
-            first_directory = ChamberDirectory.objects.filter(is_active=True).first()
-            if first_directory:
-                request_id = first_directory.id
-            else:
-                messages.error(request, "No active chamber directories are configured for acquisition at this time.")
-                return redirect('leads_list')
-
-        try:
-            target_directory = ChamberDirectory.objects.get(id=request_id)
-            package_name = f"Premium Access: {target_directory.name} Directory"
-            package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
-            amount_in_cents = 999  
-            
-            new_order = Order.objects.create(
-                user=request.user,
-                order_id=generated_order_id,
-                amount_paid=9.99,
-                is_paid=False
-            )
-            OrderItem.objects.create(order=new_order, directory=target_directory)
-            
-            metadata = {
-                'purchase_type': 'directory',
-                'directory_id': target_directory.id,
-                'order_id': new_order.order_id
-            }
-
-        except ChamberDirectory.DoesNotExist:
-            scrape_request = ChamberRequest.objects.get(id=request_id)
+        # --- ROUTE A: CUSTOM ON-DEMAND SCRAPE PIPELINE STAGE ($8.00) ---
+        if checkout_type == 'custom':
+            scrape_request = get_object_or_404(ChamberRequest, id=request_id)
             
             if scrape_request.user_email != request.user.email:
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
@@ -334,6 +314,35 @@ def create_checkout_session(request, request_id):
             metadata = {
                 'purchase_type': 'custom_scrape',
                 'scrape_request_id': scrape_request.id,
+                'order_id': new_order.order_id
+            }
+
+        # --- ROUTE B: CATALOG SINGLE DIRECTORY ACCESS TICKET ($9.99) ---
+        else:
+            if request_id == 0:
+                first_directory = ChamberDirectory.objects.filter(is_active=True).first()
+                if first_directory:
+                    request_id = first_directory.id
+                else:
+                    messages.error(request, "No active chamber directories are configured for acquisition at this time.")
+                    return redirect('leads_list')
+
+            target_directory = get_object_or_404(ChamberDirectory, id=request_id)
+            package_name = f"Premium Access: {target_directory.name} Directory"
+            package_description = f"Full data unmasking and CSV lead export utility for the [{target_directory.state}] regional dataset."
+            amount_in_cents = 999  
+            
+            new_order = Order.objects.create(
+                user=request.user,
+                order_id=generated_order_id,
+                amount_paid=9.99,
+                is_paid=False
+            )
+            OrderItem.objects.create(order=new_order, directory=target_directory)
+            
+            metadata = {
+                'purchase_type': 'directory',
+                'directory_id': target_directory.id,
                 'order_id': new_order.order_id
             }
 
@@ -360,9 +369,6 @@ def create_checkout_session(request, request_id):
         )
         return redirect(checkout_session.url, code=303)
         
-    except (ChamberDirectory.DoesNotExist, ChamberRequest.DoesNotExist):
-        messages.error(request, "The specified chamber inventory asset or scrape pipeline target was not located.")
-        return redirect('leads_list')
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -470,14 +476,27 @@ def export_leads_csv(request):
     if chamber_filter:
         leads_queryset = leads_queryset.filter(organization__icontains=chamber_filter) | leads_queryset.filter(chamber__icontains=chamber_filter)
 
-    purchased_directory_ids = set(UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True))
-    purchased_lead_ids = set(UserPurchase.objects.filter(user=request.user, lead__isnull=False).values_list('lead_id', flat=True))
+    purchased_directories = ChamberDirectory.objects.filter(
+        id__in=UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True)
+    )
+    purchased_directory_names = set([d.name.strip().lower() for d in purchased_directories if d.name])
     is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     for lead in leads_queryset:
+        org_str = getattr(lead, 'organization', '') or ''
+        chamber_str = getattr(lead, 'chamber', '') or ''
+        final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
+
+        if final_chamber.lower() in ["general", "false", "none"]:
+            if getattr(lead, 'email', '') and '@' in lead.email:
+                domain = lead.email.split('@')[1].split('.')[0]
+                final_chamber = f"{domain.upper()} Chamber"
+            else:
+                final_chamber = "Georgia Chamber"
+
+        # 💡 CSV LOCKDOWN: Verifies rows match a specific unmasked chamber string before outputting data
         has_access = (
-            (lead.directory_id in purchased_directory_ids) or 
-            (lead.id in purchased_lead_ids) or
+            final_chamber.strip().lower() in purchased_directory_names or 
             is_staff_or_admin
         )
 
@@ -495,10 +514,6 @@ def export_leads_csv(request):
             full_name = f"{first} {last}".strip() or getattr(lead, 'name', '') or "Chamber Member"
         else:
             full_name = "Chamber Member"
-
-        org_str = getattr(lead, 'organization', '') or ''
-        chamber_str = getattr(lead, 'chamber', '') or ''
-        final_chamber = org_str.strip() or chamber_str.strip() or "Georgia Chamber"
 
         lead_title = getattr(lead, 'title', "")
         title_str = str(lead_title).strip() if lead_title else "Chamber Executive"

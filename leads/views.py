@@ -118,7 +118,7 @@ def request_success_view(request):
 def leads_list(request):
     """
     Displays the list of chamber leads with search queries and regional filtering. 
-    Users who have explicitly purchased specific directories see full unmasked data.
+    New users see teaser masked rows; paid users see a clean, unmasked workspace.
     """
     raw_leads = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
     
@@ -145,17 +145,16 @@ def leads_list(request):
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None
     }
 
-    # 💡 SYSTEM CONNECTION FIX: Compile the precise ID integers of directories this user has paid for
     purchased_directory_ids = set()
     is_staff_or_admin = False
+    has_any_purchases = False
     
     if request.user.is_authenticated:
-        # Match directly on the database primary key ID instead of fragile text names
-        purchased_directory_ids = set(UserPurchase.objects.filter(
-            user=request.user, 
-            directory__isnull=False
-        ).values_list('directory_id', flat=True))
+        # Check if this specific user session has ever bought any inventory catalog sets
+        user_purchases = UserPurchase.objects.filter(user=request.user, directory__isnull=False)
+        has_any_purchases = user_purchases.exists()
         
+        purchased_directory_ids = set(user_purchases.values_list('directory_id', flat=True))
         is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     processed_leads = []
@@ -171,11 +170,16 @@ def leads_list(request):
             else:
                 final_chamber = "Georgia Chamber"
 
-        # 💡 BULLETPROOF RELATION MATCH: Verifies if this specific lead row's directory_id is in our purchased set
         has_purchased_item = (
             lead.directory_id in purchased_directory_ids or 
             is_staff_or_admin
         )
+
+        # 💡 THE INTELLIGENT ROUTER SYSTEM: 
+        # If they own active assets, hide locked rows to give them a pristine dashboard. 
+        # If they are completely new/free tier, append the teaser rows to drive checkout sales.
+        if not has_purchased_item and has_any_purchases:
+            continue
 
         lead_email = getattr(lead, 'email', "") or ""
         lead_title = getattr(lead, 'title', "")
@@ -185,12 +189,7 @@ def leads_list(request):
         if has_purchased_item:
             first = getattr(lead, 'first_name', '') or ''
             last = getattr(lead, 'last_name', '') or ''
-            
-            if first or last:
-                full_name = f"{first} {last}".strip()
-            else:
-                legacy_name = getattr(lead, 'name', '')
-                full_name = legacy_name.isoformat() if isinstance(legacy_name, (datetime.datetime, datetime.date)) else str(legacy_name).strip() if legacy_name else "Chamber Member"
+            full_name = f"{first} {last}".strip() if (first or last) else (getattr(lead, 'name', '') or "Chamber Member")
 
             processed_leads.append({
                 'id': lead.id,
@@ -514,13 +513,13 @@ def export_leads_csv(request):
     if chamber_filter:
         leads_queryset = leads_queryset.filter(organization__icontains=chamber_filter) | leads_queryset.filter(chamber__icontains=chamber_filter)
 
-    # 💡 SYSTEM CONNECTION FIX: Use direct database relation ID tracking for the exporter tool
     purchased_directory_ids = set(UserPurchase.objects.filter(
         user=request.user, 
         directory__isnull=False
     ).values_list('directory_id', flat=True))
     
     is_staff_or_admin = request.user.is_staff or request.user.is_superuser
+    has_any_purchases = len(purchased_directory_ids) > 0
 
     for lead in leads_queryset:
         org_str = getattr(lead, 'organization', '') or ''
@@ -534,11 +533,14 @@ def export_leads_csv(request):
             else:
                 final_chamber = "Georgia Chamber"
 
-        # 💡 BULLETPROOF RELATION MATCH
         has_access = (
             lead.directory_id in purchased_directory_ids or 
             is_staff_or_admin
         )
+
+        # 💡 DYNAMIC WORKSPACE EXPORT EXCLUSION: If they have purchases, only export things they bought
+        if not has_access and has_any_purchases:
+            continue
 
         lead_email = getattr(lead, 'email', "") or ""
         if not has_access:

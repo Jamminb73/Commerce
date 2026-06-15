@@ -424,7 +424,7 @@ def payment_success_view(request):
     return render(request, 'leads/payment_success.html')
 
 def payment_cancel_view(request):
-    return render(request, 'leads/cancel.html')
+    return render(request, 'leads/payment_cancel.html')
 
 
 @csrf_exempt

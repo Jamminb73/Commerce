@@ -145,16 +145,17 @@ def leads_list(request):
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None
     }
 
-    # Compile the active set of directories this specific user has paid access to
-    purchased_directory_names = set()
+    # 💡 SYSTEM CONNECTION FIX: Compile the precise ID integers of directories this user has paid for
+    purchased_directory_ids = set()
     is_staff_or_admin = False
     
     if request.user.is_authenticated:
-        # Get all purchased directory models, and map access strictly by their string names
-        purchased_directories = ChamberDirectory.objects.filter(
-            id__in=UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True)
-        )
-        purchased_directory_names = set([d.name.strip().lower() for d in purchased_directories if d.name])
+        # Match directly on the database primary key ID instead of fragile text names
+        purchased_directory_ids = set(UserPurchase.objects.filter(
+            user=request.user, 
+            directory__isnull=False
+        ).values_list('directory_id', flat=True))
+        
         is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     processed_leads = []
@@ -170,9 +171,9 @@ def leads_list(request):
             else:
                 final_chamber = "Georgia Chamber"
 
-        # 💡 DATA GUARD LOCKDOWN: Verifies if the lead belongs strictly to an unmasked chamber string the user bought
+        # 💡 BULLETPROOF RELATION MATCH: Verifies if this specific lead row's directory_id is in our purchased set
         has_purchased_item = (
-            final_chamber.strip().lower() in purchased_directory_names or 
+            lead.directory_id in purchased_directory_ids or 
             is_staff_or_admin
         )
 
@@ -221,7 +222,6 @@ def leads_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # ⏳ Dynamic Pipeline Status Array Handler Context Hook
     context = {
         **user_context, 
         'page_obj': page_obj,
@@ -514,10 +514,12 @@ def export_leads_csv(request):
     if chamber_filter:
         leads_queryset = leads_queryset.filter(organization__icontains=chamber_filter) | leads_queryset.filter(chamber__icontains=chamber_filter)
 
-    purchased_directories = ChamberDirectory.objects.filter(
-        id__in=UserPurchase.objects.filter(user=request.user, directory__isnull=False).values_list('directory_id', flat=True)
-    )
-    purchased_directory_names = set([d.name.strip().lower() for d in purchased_directories if d.name])
+    # 💡 SYSTEM CONNECTION FIX: Use direct database relation ID tracking for the exporter tool
+    purchased_directory_ids = set(UserPurchase.objects.filter(
+        user=request.user, 
+        directory__isnull=False
+    ).values_list('directory_id', flat=True))
+    
     is_staff_or_admin = request.user.is_staff or request.user.is_superuser
 
     for lead in leads_queryset:
@@ -532,9 +534,9 @@ def export_leads_csv(request):
             else:
                 final_chamber = "Georgia Chamber"
 
-        # 💡 DATA GUARD LOCKDOWN: Verifies rows match a specific unmasked chamber string before outputting data
+        # 💡 BULLETPROOF RELATION MATCH
         has_access = (
-            final_chamber.strip().lower() in purchased_directory_names or 
+            lead.directory_id in purchased_directory_ids or 
             is_staff_or_admin
         )
 

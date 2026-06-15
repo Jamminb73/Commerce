@@ -3,214 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upgrade to Premium | Local Commerce Leads</title>
-    <style>
-        :root {
-            --primary-bg: #1a2a6c;
-            --accent-color: #f39c12;
-            --text-dark: #2d3748;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--text-dark);
-        }
-
-        .pricing-card {
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .pricing-card h2 {
-            color: var(--primary-bg);
-            margin-top: 0;
-        }
-
-        .price {
-            font-size: 3rem;
-            font-weight: bold;
-            color: var(--text-dark);
-            margin: 20px 0;
-        }
-
-        .price span {
-            font-size: 1rem;
-            color: #718096;
-        }
-
-        .features {
-            list-style: none;
-            padding: 0;
-            margin: 30px 0;
-            text-align: left;
-        }
-
-        .features li {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            font-size: 1rem;
-        }
-
-        .features li::before {
-            content: "✓";
-            color: #2ecc71;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .btn-purchase {
-            display: block;
-            width: 100%;
-            background: var(--accent-color);
-            color: white;
-            padding: 14px;
-            text-align: center;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            transition: background 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-purchase:hover {
-            background: #e67e22;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 20px;
-            color: #718096;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <title>Pipeline Core | Control Console</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body>
+<body class="bg-slate-950 font-sans antialiased text-white m-0 min-h-screen">
 
-    <div class="min-h-screen bg-slate-900 text-white p-8">
-    <div class="max-w-2xl mx-auto bg-slate-800 rounded-lg shadow-xl border border-slate-700 p-6">
+<div class="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-2xl mx-auto">
         
-        <div class="border-b border-slate-700 pb-4 mb-6">
-            <h1 class="text-2xl font-bold text-green-400">Pipeline Core: Request Custom Target Scrape</h1>
-            <p class="text-slate-400 text-sm">Specify regional business indexing coordinates to target, extract, and seed directly into the live database.</p>
+        <div class="bg-slate-800/40 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-2xl p-8 md:p-10">
+            
+            <div class="border-b border-slate-700/50 pb-6 mb-8">
+                <div class="flex items-center space-x-3">
+                    <span class="flex h-3 w-3 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-100">
+                        Pipeline Core: <span class="text-green-400">Request Target Scrape</span>
+                    </h1>
+                </div>
+                <p class="mt-2 text-sm text-slate-400 leading-relaxed">
+                    Specify regional business indexing coordinates to target, extract, and seed directly into the live database framework.
+                </p>
+            </div>
+
+            {% if status == 'success' %}
+                <div class="mb-6 p-4 bg-green-950/40 border border-green-500/50 text-green-200 text-sm rounded-xl flex items-center space-x-2">
+                    <span>✅</span> <span>{{ message }}</span>
+                </div>
+            {% elif status == 'error' %}
+                <div class="mb-6 p-4 bg-red-950/40 border border-red-500/50 text-red-200 text-sm rounded-xl flex items-center space-x-2">
+                    <span>🚨</span> <span>{{ message }}</span>
+                </div>
+            {% endif %}
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">State Focus</label>
+                        <div class="relative">
+                            <select name="state_focus" required 
+                                    class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150 appearance-none cursor-pointer">
+                                <option value="">Select State...</option>
+                                <option value="AL">Alabama</option>
+                                <option value="AK">Alaska</option>
+                                <option value="AZ">Arizona</option>
+                                <option value="AR">Arkansas</option>
+                                <option value="CA">California</option>
+                                <option value="CO">Colorado</option>
+                                <option value="CT">Connecticut</option>
+                                <option value="DE">Delaware</option>
+                                <option value="FL">Florida</option>
+                                <option value="GA">Georgia</option>
+                                <option value="HI">Hawaii</option>
+                                <option value="ID">Idaho</option>
+                                <option value="IL">Illinois</option>
+                                <option value="IN">Indiana</option>
+                                <option value="IA">Iowa</option>
+                                <option value="KS">Kansas</option>
+                                <option value="KY">Kentucky</option>
+                                <option value="LA">Louisiana</option>
+                                <option value="ME">Maine</option>
+                                <option value="MD">Maryland</option>
+                                <option value="MA">Massachusetts</option>
+                                <option value="MI">Michigan</option>
+                                <option value="MN">Minnesota</option>
+                                <option value="MS">Mississippi</option>
+                                <option value="MO">Missouri</option>
+                                <option value="MT">Montana</option>
+                                <option value="NE">Nebraska</option>
+                                <option value="NV">Nevada</option>
+                                <option value="NH">New Hampshire</option>
+                                <option value="NJ">New Jersey</option>
+                                <option value="NM">New Mexico</option>
+                                <option value="NY">New York</option>
+                                <option value="NC">North Carolina</option>
+                                <option value="ND">North Dakota</option>
+                                <option value="OH">Ohio</option>
+                                <option value="OK">Oklahoma</option>
+                                <option value="OR">Oregon</option>
+                                <option value="PA">Pennsylvania</option>
+                                <option value="RI">Rhode Island</option>
+                                <option value="SC">South Carolina</option>
+                                <option value="SD">South Dakota</option>
+                                <option value="TN">Tennessee</option>
+                                <option value="TX">Texas</option>
+                                <option value="UT">Utah</option>
+                                <option value="VT">Vermont</option>
+                                <option value="VA">Virginia</option>
+                                <option value="WA">Washington</option>
+                                <option value="WV">West Virginia</option>
+                                <option value="WI">Wisconsin</option>
+                                <option value="WY">Wyoming</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">City or Territory Region</label>
+                        <input type="text" name="region_name" required placeholder="e.g., Kennesaw" 
+                               class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
+                    </div>
+                </div>
+
+                <hr class="border-slate-700/40 my-2">
+
+                <div class="space-y-5 bg-slate-900/30 p-5 rounded-xl border border-slate-700/30">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider tracking-widest">Advanced Targeting Overrides (Optional)</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Chamber of Commerce Target Names</label>
+                        <input type="text" name="chamber_name" placeholder="e.g., Cobb County Chamber" 
+                               class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
+                        <p class="text-xs text-slate-500 mt-1">Leave blank to let our data engine locate them automatically.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Chamber Membership Directory URL Link</label>
+                        <input type="url" name="target_url" placeholder="Provide specific membership index link here if you have it" 
+                               class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
+                        <p class="text-xs text-slate-500 mt-1">Direct link showing their public online membership directory index layout.</p>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" 
+                            class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-150 shadow-lg shadow-green-900/20 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-800 cursor-pointer text-center">
+                        Execute Automated Scrape & Build Database
+                    </button>
+                </div>
+            </form>
+
         </div>
-
-        {% if status == 'success' %}
-            <div class="mb-6 p-4 bg-green-900/50 border border-green-500 text-green-200 rounded">
-                {{ message }}
-            </div>
-        {% elif status == 'error' %}
-            <div class="mb-6 p-4 bg-red-900/50 border border-red-500 text-red-200 rounded">
-                {{ message }}
-            </div>
-        {% endif %}
-
-        <form method="POST" class="space-y-6">
-            {% csrf_token %}
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-2">State Focus</label>
-                    <select name="state_focus" required class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:border-green-500">
-                        <option value="">Select a State...</option>
-                        <option value="AL">Alabama</option>
-                        <option value="AK">Alaska</option>
-                        <option value="AZ">Arizona</option>
-                        <option value="AR">Arkansas</option>
-                        <option value="CA">California</option>
-                        <option value="CO">Colorado</option>
-                        <option value="CT">Connecticut</option>
-                        <option value="DE">Delaware</option>
-                        <option value="FL">Florida</option>
-                        <option value="GA">Georgia</option>
-                        <option value="HI">Hawaii</option>
-                        <option value="ID">Idaho</option>
-                        <option value="IL">Illinois</option>
-                        <option value="IN">Indiana</option>
-                        <option value="IA">Iowa</option>
-                        <option value="KS">Kansas</option>
-                        <option value="KY">Kentucky</option>
-                        <option value="LA">Louisiana</option>
-                        <option value="ME">Maine</option>
-                        <option value="MD">Maryland</option>
-                        <option value="MA">Massachusetts</option>
-                        <option value="MI">Michigan</option>
-                        <option value="MN">Minnesota</option>
-                        <option value="MS">Mississippi</option>
-                        <option value="MO">Missouri</option>
-                        <option value="MT">Montana</option>
-                        <option value="NE">Nebraska</option>
-                        <option value="NV">Nevada</option>
-                        <option value="NH">New Hampshire</option>
-                        <option value="NJ">New Jersey</option>
-                        <option value="NM">New Mexico</option>
-                        <option value="NY">New York</option>
-                        <option value="NC">North Carolina</option>
-                        <option value="ND">North Dakota</option>
-                        <option value="OH">Ohio</option>
-                        <option value="OK">Oklahoma</option>
-                        <option value="OR">Oregon</option>
-                        <option value="PA">Pennsylvania</option>
-                        <option value="RI">Rhode Island</option>
-                        <option value="SC">South Carolina</option>
-                        <option value="SD">South Dakota</option>
-                        <option value="TN">Tennessee</option>
-                        <option value="TX">Texas</option>
-                        <option value="UT">Utah</option>
-                        <option value="VT">Vermont</option>
-                        <option value="VA">Virginia</option>
-                        <option value="WA">Washington</option>
-                        <option value="WV">West Virginia</option>
-                        <option value="WI">Wisconsin</option>
-                        <option value="WY">Wyoming</option>
-                    </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-slate-300 mb-2">City or Territory Region</label>
-                    <input type="text" name="region_name" required placeholder="e.g., Kennesaw" 
-                           class="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 text-white focus:outline-none focus:border-green-500">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Chamber of Commerce Target Names <span class="text-xs text-slate-500">(Optional)</span></label>
-                <input type="text" name="chamber_name" placeholder="e.g., Cobb County Chamber" 
-                       class="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 text-white focus:outline-none focus:border-green-500">
-                <p class="text-xs text-slate-500 mt-1">Leave blank to let our data engine locate them automatically.</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Chamber Membership Directory URL Link <span class="text-xs text-slate-500">(Optional)</span></label>
-                <input type="url" name="target_url" placeholder="Provide specific membership index link here if you have it" 
-                       class="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 text-white focus:outline-none focus:border-green-500">
-                <p class="text-xs text-slate-500 mt-1">Direct link showing their public online membership directory index layout.</p>
-            </div>
-
-            <div class="pt-2">
-                <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 px-4 rounded transition duration-150 shadow-md">
-                    Execute Automated Scrape & Build Database
-                </button>
-            </div>
-        </form>
-
     </div>
 </div>
 

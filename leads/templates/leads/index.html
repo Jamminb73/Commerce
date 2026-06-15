@@ -275,6 +275,12 @@
                             </a>
                         {% endif %}
                         
+                        {% if request.user.is_superuser %}
+                            <a href="/purchase/" class="menu-item" style="background-color: #f0fdf4; border-left: 3px solid #16a34a; font-weight: 600; color: #15803d;">
+                                🚀 Core Pipeline Scraper Control
+                            </a>
+                        {% endif %}
+                        
                         <hr>
                         <a href="{% url 'logout' %}" class="menu-item text-danger">🚪 Logout</a>
                     </div>

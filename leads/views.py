@@ -408,7 +408,7 @@ def create_checkout_session(request, request_id):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
+    
 
 def purchase_view(request):
     """
@@ -416,46 +416,41 @@ def purchase_view(request):
     direct database execution workflows.
     """
     if request.method == 'POST':
-        form = ChamberRequestForm(request.POST)
-        if form.is_valid():
-            chamber_request = form.save(commit=False)
-            
-            # Map values explicitly to your database fields from your custom template inputs
-            chamber_request.state = request.POST.get('state_focus', '').strip()
-            chamber_request.city_or_region = request.POST.get('region_name', '').strip()
-            chamber_request.chamber_name = request.POST.get('chamber_name', '').strip()
-            chamber_request.chamber_url = request.POST.get('target_url', '').strip()
-            
-            # Set system operational values for backend console tracking
-            # Matching the "Scraping In Progress" status layout your admin table filters for
-            chamber_request.status = 'scraping'
-            chamber_request.chambers_count = '1'
-            chamber_request.estimated_cost = 0.00
-            
-            if request.user.is_authenticated and not chamber_request.user_email:
-                chamber_request.user_email = request.user.email
-                
-            chamber_request.save()
-            
-            messages.success(
-                request, 
-                f"Automated Data Pipeline initiated for {chamber_request.city_or_region}, {chamber_request.state}! Core engine active."
-            )
-            return redirect('purchase_view')
-    else:
-        initial_data = {}
+        # Create a blank instance instead of checking form.is_valid() 
+        # to prevent field name mismatches from stalling the request
+        chamber_request = ChamberRequest()
+        
+        # Pull your custom HTML input names directly out of the POST query dict
+        chamber_request.state = request.POST.get('state_focus', '').strip()
+        chamber_request.city_or_region = request.POST.get('region_name', '').strip()
+        chamber_request.chamber_name = request.POST.get('chamber_name', '').strip()
+        chamber_request.chamber_url = request.POST.get('target_url', '').strip()
+        
+        # Set background automation variables
+        chamber_request.status = 'scraping'
+        chamber_request.chambers_count = '1'
+        chamber_request.estimated_cost = 0.00
+        
         if request.user.is_authenticated:
-            initial_data['user_email'] = request.user.email
-        form = ChamberRequestForm(initial=initial_data)
+            chamber_request.user_email = request.user.email
+            
+        # Commit directly to your PostgreSQL backend!
+        chamber_request.save()
+        
+        messages.success(
+            request, 
+            f"Automated Data Pipeline initiated for {chamber_request.city_or_region}, {chamber_request.state}! Core engine active."
+        )
+        return redirect('purchase_view')
 
     context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
         'username': request.user.username if request.user.is_authenticated else "",
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None,
-        'form': form,
     }
     return render(request, 'leads/purchase.html', context)
+
 
 
 def payment_success_view(request):

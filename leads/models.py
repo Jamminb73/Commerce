@@ -1,6 +1,7 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
 class ChamberDirectory(models.Model):
@@ -113,8 +114,6 @@ class Profile(models.Model):
         return f"{self.user.username}'s Profile (Premium: {self.is_premium})"
 
 
-# --- New Strict Purchase & Access Control Isolation System ---
-
 class Order(models.Model):
     """
     Captures the snapshot of what a user wants to purchase BEFORE they go to Stripe.
@@ -169,7 +168,49 @@ class UserPurchase(models.Model):
             )
         ]
 
-# --- Automatic Profile Creation Signals ---
+    def __str__(self):
+        if self.directory:
+            return f"{self.user.username} unmasked directory -> {self.directory.name}"
+        if self.lead:
+            return f"{self.user.username} unmasked single lead -> {self.lead.email}"
+        return f"{self.user.username} generic asset clearance"
+
+
+# ==============================================================================
+# 🎛️ AUTOMATED BACKGROUND PIPELINE SIGNALS (NO TERMINAL MANIPULATION REQUIRED)
+# ==============================================================================
+
+@receiver(pre_save, sender=ChamberLead)
+def auto_assign_directory_relationship(sender, instance, **kwargs):
+    """
+    Automated Bridge Signal:
+    Intercepts a lead record immediately before it gets committed to PostgreSQL.
+    If the directory link is missing, it cross-references the organization or chamber string
+    against active ChamberDirectory rows and cleanly wires up the relation ID completely hands-off.
+    """
+    # Only execute mapping logic if the directory foreign key relation isn't explicitly set yet
+    if not instance.directory_id:
+        # Construct a robust search string combining text markers safely
+        org_str = getattr(instance, 'organization', '') or ''
+        ch_str = getattr(instance, 'chamber', '') or ''
+        combined_text = f"{org_str} {ch_str}".strip().lower()
+
+        if combined_text:
+            # Query active directories to find a matching token match
+            active_directories = ChamberDirectory.objects.filter(is_active=True)
+
+            for directory in active_directories:
+                region_marker = (directory.city_or_region or "").strip().lower()
+                
+                # Guard against unconfigured or blank region identifiers in the inventory index
+                if not region_marker:
+                    continue
+
+                # Clean match verification: if 'gwinnett' lives inside 'Gwinnett Chamber', relationship locks down!
+                if region_marker in combined_text:
+                    instance.directory = directory
+                    break  # Break out early; the target asset is successfully mapped
+                    
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

@@ -411,14 +411,52 @@ def create_checkout_session(request, request_id):
 
 
 def purchase_view(request):
-    """Renders the entry-level pricing selection board."""
+    """
+    Renders the internal data engine console and handles 
+    direct database execution workflows.
+    """
+    if request.method == 'POST':
+        form = ChamberRequestForm(request.POST)
+        if form.is_valid():
+            chamber_request = form.save(commit=False)
+            
+            # Map values explicitly to your database fields from your custom template inputs
+            chamber_request.state = request.POST.get('state_focus', '').strip()
+            chamber_request.city_or_region = request.POST.get('region_name', '').strip()
+            chamber_request.chamber_name = request.POST.get('chamber_name', '').strip()
+            chamber_request.chamber_url = request.POST.get('target_url', '').strip()
+            
+            # Set system operational values for backend console tracking
+            # Matching the "Scraping In Progress" status layout your admin table filters for
+            chamber_request.status = 'scraping'
+            chamber_request.chambers_count = '1'
+            chamber_request.estimated_cost = 0.00
+            
+            if request.user.is_authenticated and not chamber_request.user_email:
+                chamber_request.user_email = request.user.email
+                
+            chamber_request.save()
+            
+            messages.success(
+                request, 
+                f"Automated Data Pipeline initiated for {chamber_request.city_or_region}, {chamber_request.state}! Core engine active."
+            )
+            return redirect('purchase_view')
+    else:
+        initial_data = {}
+        if request.user.is_authenticated:
+            initial_data['user_email'] = request.user.email
+        form = ChamberRequestForm(initial=initial_data)
+
     context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
         'username': request.user.username if request.user.is_authenticated else "",
-        'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None
+        'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None,
+        'form': form,
     }
     return render(request, 'leads/purchase.html', context)
+
 
 def payment_success_view(request):
     return render(request, 'leads/payment_success.html')
@@ -544,7 +582,7 @@ def export_leads_csv(request):
 
         lead_email = getattr(lead, 'email', "") or ""
         if not has_access:
-            if lead_email and '@' in lead_email:
+            if delete_email and '@' in lead_email:
                 email_parts = lead_email.split('@')
                 lead_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
             else:

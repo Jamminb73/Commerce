@@ -98,6 +98,9 @@ class ChamberRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # 📡 Live terminal readout tracking field
+    console_logs = models.TextField(default="", blank=True, help_text="Real-time scrolling terminal output from worker threads")
+
     class Meta:
         ordering = ['-created_at']
 
@@ -188,28 +191,23 @@ def auto_assign_directory_relationship(sender, instance, **kwargs):
     If the directory link is missing, it cross-references the organization or chamber string
     against active ChamberDirectory rows and cleanly wires up the relation ID completely hands-off.
     """
-    # Only execute mapping logic if the directory foreign key relation isn't explicitly set yet
     if not instance.directory_id:
-        # Construct a robust search string combining text markers safely
         org_str = getattr(instance, 'organization', '') or ''
         ch_str = getattr(instance, 'chamber', '') or ''
         combined_text = f"{org_str} {ch_str}".strip().lower()
 
         if combined_text:
-            # Query active directories to find a matching token match
             active_directories = ChamberDirectory.objects.filter(is_active=True)
 
             for directory in active_directories:
                 region_marker = (directory.city_or_region or "").strip().lower()
                 
-                # Guard against unconfigured or blank region identifiers in the inventory index
                 if not region_marker:
                     continue
 
-                # Clean match verification: if 'gwinnett' lives inside 'Gwinnett Chamber', relationship locks down!
                 if region_marker in combined_text:
                     instance.directory = directory
-                    break  # Break out early; the target asset is successfully mapped
+                    break
                     
 
 @receiver(post_save, sender=User)

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Core | Live Feed</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-950 font-sans antialiased text-white m-0 min-h-screen">
+
+    <nav style="background: #1a2a6c; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <h2 style="color: white; margin: 0; font-size: 1.4rem; font-weight: 700;">Local Commerce Leads</h2>
+        <a href="/purchase/" class="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 transition">
+            ⬅️ Return to Console
+        </a>
+    </nav>
+
+    <div class="min-h-[calc(100vh-73px)] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-3xl mx-auto">
+            <div class="bg-green-500 border border-green-600/30 rounded-2xl shadow-2xl p-3 shadow-green-950/20">
+                
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-8">
+                    <div class="border-b border-slate-700/50 pb-4 mb-6 flex justify-between items-center">
+                        <div>
+                            <h1 class="text-xl font-bold tracking-tight text-slate-100">
+                                Worker Core Pipeline: <span id="statusBadge" class="text-green-400 animate-pulse">Scraping Active</span>
+                            </h1>
+                            <p class="text-xs text-slate-400 mt-1">Real-time data streaming output loop directly from your system threads.</p>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-5 font-mono text-xs text-emerald-400 overflow-y-auto h-80 shadow-inner leading-relaxed" id="terminalBox">
+                        <p class="text-slate-500">Connecting to automation thread matrix...</p>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
+                        <p>Request ID Context: #{{ request_id }}</p>
+                        <a href="/admin/leads/chamberrequest/" class="text-green-500 hover:underline">⚙️ Open Global Request Logs</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const requestId = "{{ request_id }}";
+        const terminal = document.getElementById("terminalBox");
+        const statusBadge = document.getElementById("statusBadge");
+
+        function updateLogs() {
+            fetch(`/purchase/monitor/api/${requestId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update the terminal text block with the database logs
+                    terminal.innerText = data.logs;
+                    terminal.scrollTop = terminal.scrollHeight; // Autoscroll downward
+
+                    // Update live indicator state handles
+                    if (data.status === 'completed') {
+                        statusBadge.innerText = "Execution Finished ✅";
+                        statusBadge.classList.remove("text-green-400", "animate-pulse");
+                        statusBadge.classList.add("text-emerald-500");
+                    } else if (data.status === 'error') {
+                        statusBadge.innerText = "Pipeline Halted ❌";
+                        statusBadge.classList.remove("text-green-400", "animate-pulse");
+                        statusBadge.classList.add("text-red-500");
+                    } else {
+                        // Keep running the loop if status is still 'scraping'
+                        setTimeout(updateLogs, 2000);
+                    }
+                })
+                .catch(err => console.error("Polling stream interruption error:", err));
+        }
+
+        // Boot logging thread on viewport entry point
+        updateLogs();
+    </script>
+</body>
+</html>

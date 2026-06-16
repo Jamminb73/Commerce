@@ -31,43 +31,142 @@ def parse_name(raw_name):
 class Command(BaseCommand):
     help = 'Runs the Playwright proximity scraper to collect Chamber leads directly into the database.'
 
-    def handle(self, *args, **options):
-        chamber_market = [
-            ('https://metroatlantachamber.com/meet-the-team/', 'Metro Atlanta Chamber', 'GA'),
-            ('https://cobbchamber.org/about-us/chamber-staff/', 'Cobb Chamber', 'GA'),
-            ('https://www.gwinnettchamber.org/staff/', 'Gwinnett Chamber', 'GA')
-        ]
-        
-        self.stdout.write(self.style.SUCCESS("🚀 Starting Chamber Pipeline Database Scraper..."))
+    def add_arguments(self, parser):
+        """Allows optional targeting parameters to be passed in from command line or views."""
+        parser.add_argument('--url', type=str, help='Target URL to scrape directly')
+        parser.add_argument('--name', type=str, help='Custom Chamber Name')
+        parser.add_argument('--state', type=str, help='Target State Focus')
 
-        for url, name, state in chamber_market:
-            # Step A: Secure parent Chamber Directory object
+    def handle(self, *args, **options):
+        target_url = options.get('url')
+        custom_name = options.get('name')
+        target_state = options.get('state')
+
+        if target_url and custom_name:
+            self.stdout.write(self.style.SUCCESS(f"🚀 Routing Dynamic Target Pipeline Execution for {custom_name}..."))
+            
+            # Create a clean base object framework
             directory_obj, _ = ChamberDirectory.objects.get_or_create(
-                name=name,
+                name=custom_name,
                 defaults={
-                    'state': state,
-                    'directory_url': url,
+                    'state': target_state if target_state else 'US',
+                    'directory_url': target_url,
                     'is_active': True
                 }
             )
+            
+            # Run our unified dynamic scoper loop
+            self.refactored_chamber_scoper(target_url, custom_name, directory_obj)
+            
+        else:
+            # 🔄 FALLBACK ROUTE: Run default market assets if no args specified (Terminal Mode)
+            chamber_market = [
+                ('https://metroatlantachamber.com/meet-the-team/', 'Metro Atlanta Chamber', 'GA'),
+                ('https://cobbchamber.org/about-us/chamber-staff/', 'Cobb Chamber', 'GA'),
+                ('https://www.gwinnettchamber.org/staff/', 'Gwinnett Chamber', 'GA')
+            ]
+            
+            self.stdout.write(self.style.SUCCESS("🚀 Starting Standard Chamber Pipeline Database Scraper..."))
 
-            # Step B: Pass down context safely
-            self.refactored_chamber_scoper(url, name, directory_obj)
-            time.sleep(random.uniform(2.0, 4.0))
+            for url, name, state in chamber_market:
+                directory_obj, _ = ChamberDirectory.objects.get_or_create(
+                    name=name,
+                    defaults={
+                        'state': state,
+                        'directory_url': url,
+                        'is_active': True
+                    }
+                )
+                self.refactored_chamber_scoper(url, name, directory_obj)
+                time.sleep(random.uniform(2.0, 4.0))
 
         self.stdout.write(self.style.SUCCESS("\n🎉 Done! Proximity database sync completely finished."))
 
+    def discover_chamber_url(self, page, google_url):
+        """🔍 Sifter Layer: Opens Google, dodges ad headers, and pulls back the top organic result."""
+        self.stdout.write("🔍 [DISCOVERY]: Intercepting fallback URL... Scanning Google Search nodes...")
+        try:
+            page.goto(google_url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(2)
+            
+            # Pull all anchor references from the search results grid
+            links = page.evaluate('''() => {
+                return Array.from(document.querySelectorAll('a'))
+                    .map(a => a.href)
+                    .filter(href => href && href.startsWith('http') && !href.includes('google.com'));
+            }''')
+            
+            for link in links:
+                # Bypass maps, search terms, or cookie policies
+                if any(x in link.lower() for x in ['search?', 'maps.', 'support.', 'accounts.']):
+                    continue
+                self.stdout.write(f"🔗 [DISCOVERY]: Sourced primary domain authority: {link}")
+                return link
+        except Exception as e:
+            self.stdout.write(f"⚠️ [DISCOVERY]: Sifter index time out or mismatch: {e}")
+        return None
+
+    def crawl_for_directory_target(self, page, base_url):
+        """🕷️ Scout Layer: Crawls internal navigation menus to jump straight to team/staff pages."""
+        self.stdout.write("🕷️ [SCOUT]: Sifting internal nav mapping layout for contact targets...")
+        try:
+            page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(3)
+            
+            # Hunt through all text properties for structural terms
+            target_page = page.evaluate('''() => {
+                let anchors = Array.from(document.querySelectorAll('a'));
+                let keywords = ['staff', 'team', 'about-us', 'directory', 'about/staff', 'about/team', 'contact-us'];
+                
+                // First pass: Check actual link text strings matches
+                for (let kw of keywords) {
+                    let match = anchors.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(kw));
+                    if (match && match.href && match.href.startsWith('http')) return match.href;
+                }
+                
+                // Second pass: Sift through raw href strings attributes
+                for (let kw of keywords) {
+                    let match = anchors.find(a => (a.getAttribute('href') || '').toLowerCase().includes(kw));
+                    if (match && match.href && match.href.startsWith('http')) return match.href;
+                }
+                return null;
+            }''')
+            
+            if target_page:
+                self.stdout.write(f"🎯 [SCOUT]: Automated routing locked onto index page: {target_page}")
+                return target_page
+        except Exception as e:
+            self.stdout.write(f"⚠️ [SCOUT]: Navigation map scan incomplete: {e}")
+        return base_url
+
     def refactored_chamber_scoper(self, target_url, org_name, directory_obj):
         with sync_playwright() as p:
-            self.stdout.write(f"🔍 Proximity Parsing: {org_name}...")
             browser = p.chromium.launch(headless=True)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             page = context.new_page()
             
+            # 💡 DISCOVERY ENGAGEMENT STEP: Check if we are running an on-demand background search route
+            if "google.com/search" in target_url:
+                primary_domain = self.discover_chamber_url(page, target_url)
+                if primary_domain:
+                    # Update our target URL coordinates dynamically to use the real company asset link
+                    target_url = self.crawl_for_directory_target(page, primary_domain)
+                    
+                    # Update your directory record in the database so it's clean for future customer store entries
+                    directory_obj.directory_url = target_url
+                    directory_obj.save()
+                else:
+                    self.stdout.write(self.style.ERROR("❌ [ENGINE ERROR]: Discovery was unable to extract an authoritative domain link."))
+                    browser.close()
+                    return
+
+            self.stdout.write(f"⚙️ [PLAYWRIGHT]: Executing proximity lookup parse at: {target_url}")
+            
             try:
-                page.goto(target_url, wait_until="networkidle", timeout=60000)
+                # 🚀 STABILITY TWEAK: Using domcontentloaded stops network-idle tracker hang crashes cold!
+                page.goto(target_url, wait_until="domcontentloaded", timeout=45000)
                 time.sleep(5) 
                 
                 for _ in range(6):
@@ -155,7 +254,6 @@ class Command(BaseCommand):
                     if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile"]:
                         cleaned_title = "Chamber Executive"
 
-                    # Database integration line
                     lead_obj, created = ChamberLead.objects.update_or_create(
                         email=email,
                         defaults={

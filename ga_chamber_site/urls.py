@@ -11,6 +11,8 @@ from leads.views import (
     login_view,
     logout_view,             
     purchase_view,
+    monitor_view,                   # <-- Imported your new live terminal log view
+    monitor_scrape_api,             # <-- Imported your new live log JSON api endpoint
     create_checkout_session,
     payment_success_view,
     payment_cancel_view,     
@@ -59,6 +61,11 @@ urlpatterns = [
     
     # Stripe Checkout & Payment Flows (Updated with dynamic request_id parameter)
     path('purchase/', purchase_view, name='purchase'),
+    
+    # Live Pipeline Console Monitoring Deck 
+    path('purchase/monitor/<int:request_id>/', monitor_view, name='monitor_view'),
+    path('purchase/monitor/api/<int:request_id>/', monitor_scrape_api, name='monitor_scrape_api'),
+    
     path('create-checkout-session/<int:request_id>/', create_checkout_session, name='create_checkout_session'),
     path('payment-success/', payment_success_view, name='payment_success'),
     path('payment-cancel/', payment_cancel_view, name='payment_cancel'),

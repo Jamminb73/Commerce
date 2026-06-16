@@ -2,6 +2,7 @@ import csv
 import uuid
 import datetime
 import stripe
+import threading
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse  # <-- Imported for secure dynamic reverse routing
@@ -16,6 +17,8 @@ from django.core.mail import send_mail
 
 from .models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
 from .forms import ChamberRequestForm  
+# Import your custom Playwright management command directly out of your directory hierarchy
+from leads.management.commands.run_scraper import Command as ScraperCommand
 
 def landing_page(request):
     """Renders the main platform homepage."""
@@ -201,7 +204,7 @@ def leads_list(request):
                 'is_locked': False  
             })
         else:
-            if lead_email and '@' in lead_email:
+            if getattr(lead, 'email', '') and '@' in lead_email:
                 email_parts = lead_email.split('@')
                 masked_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
             else:
@@ -408,7 +411,70 @@ def create_checkout_session(request, request_id):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def run_background_scrape(request_id, target_url, chamber_name, city_string, state):
+    """Worker function that runs your Playwright script safely inside a background thread context."""
+    scraper = ScraperCommand()
     
+    # Text-appender that streams lines directly into the database field for JS polling
+    def log_to_database(text_line):
+        req = ChamberRequest.objects.get(id=request_id)
+        req.console_logs += f"{text_line}\n"
+        req.save()
+        print(text_line)  # Retains your normal terminal printing execution
+
+    # Intercept Playwright's stdout channels to wire it to our log framework
+    scraper.stdout.write = log_to_database
+    scraper.style.SUCCESS = lambda text: text
+    scraper.style.WARNING = lambda text: text
+    scraper.style.ERROR = lambda text: text
+
+    try:
+        log_to_database("📡 [SYSTEM CORE]: Booting asynchronous worker thread pipeline...")
+        
+        # 🔄 MULTI-CITY PARSER ENGINE: Break down the comma-separated text into clean individual city strings
+        cities = [c.strip() for c in city_string.split(',') if c.strip()]
+        log_to_database(f"🗺️ [SYSTEM CORE]: Target batch coordinates parsed: {len(cities)} location nodes found ({', '.join(cities)}).")
+
+        for idx, current_city in enumerate(cities, start=1):
+            log_to_database(f"\n📍 [NODE {idx}/{len(cities)}]: Initiating data pipeline sweep for {current_city}, {state.upper()}...")
+            
+            # Build specific naming tokens based on the active target loop element
+            derived_chamber_name = f"{current_city} Chamber of Commerce"
+            derived_fallback_url = f"https://www.google.com/search?q={current_city.replace(' ', '+')}+{state}+chamber+of+commerce"
+            
+            directory_obj, _ = ChamberDirectory.objects.get_or_create(
+                city_or_region__iexact=current_city,
+                state__iexact=state,
+                defaults={
+                    'name': derived_chamber_name,
+                    'state': state.upper(),
+                    'city_or_region': current_city,
+                    'directory_url': derived_fallback_url,
+                    'is_active': True
+                }
+            )
+            
+            # Fire off your management script's unified dynamic route handler
+            scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
+            
+            if idx < len(cities):
+                log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
+                time.sleep(random.uniform(3.0, 5.0))
+        
+        # Complete state handshake
+        req = ChamberRequest.objects.get(id=request_id)
+        req.status = 'completed'
+        req.save()
+        log_to_database("\n🎉 [SYSTEM CORE]: Batch pipeline compilation complete. Operational thread sitting idle.")
+        
+    except Exception as e:
+        log_to_database(f"\n❌ [CRASH INTERCEPT]: Core automation script failure: {str(e)}")
+        req = ChamberRequest.objects.get(id=request_id)
+        req.status = 'error'
+        req.save()
+
 
 def purchase_view(request):
     """
@@ -416,8 +482,6 @@ def purchase_view(request):
     direct database execution workflows.
     """
     if request.method == 'POST':
-        # Create a blank instance instead of checking form.is_valid() 
-        # to prevent field name mismatches from stalling the request
         chamber_request = ChamberRequest()
         
         # Pull your custom HTML input names directly out of the POST query dict
@@ -426,10 +490,11 @@ def purchase_view(request):
         chamber_request.chamber_name = request.POST.get('chamber_name', '').strip()
         chamber_request.chamber_url = request.POST.get('target_url', '').strip()
         
-        # Set background automation variables
+        # Set system operational values for backend console tracking
         chamber_request.status = 'scraping'
         chamber_request.chambers_count = '1'
         chamber_request.estimated_cost = 0.00
+        chamber_request.console_logs = "📡 Booting worker engine sequence...\n"
         
         if request.user.is_authenticated:
             chamber_request.user_email = request.user.email
@@ -437,11 +502,21 @@ def purchase_view(request):
         # Commit directly to your PostgreSQL backend!
         chamber_request.save()
         
-        messages.success(
-            request, 
-            f"Automated Data Pipeline initiated for {chamber_request.city_or_region}, {chamber_request.state}! Core engine active."
-        )
-        return redirect('purchase_view')
+        # Fire off the worker script inside a background thread so the browser jumps to the terminal view instantly
+        threading.Thread(
+            target=run_background_scrape,
+            args=(
+                chamber_request.id, 
+                chamber_request.chamber_url, 
+                chamber_request.chamber_name,
+                chamber_request.city_or_region,
+                chamber_request.state
+            ),
+            daemon=True
+        ).start()
+        
+        # Redirect over to your active log monitoring cockpit view!
+        return redirect(f'/purchase/monitor/{chamber_request.id}/')
 
     context = {
         'is_authenticated_user': request.user.is_authenticated,
@@ -451,6 +526,24 @@ def purchase_view(request):
     }
     return render(request, 'leads/purchase.html', context)
 
+
+def monitor_view(request, request_id):
+    """Renders the dedicated scrolling log window deck for the active scraping run."""
+    context = {
+        'request_id': request_id,
+        'is_authenticated_user': request.user.is_authenticated,
+        'username': request.user.username if request.user.is_authenticated else "",
+    }
+    return render(request, 'leads/purchase_processing.html', context)
+
+
+def monitor_scrape_api(request, request_id):
+    """API endpoint allowing JavaScript to read active database text logs on the fly."""
+    req = get_object_or_404(ChamberRequest, id=request_id)
+    return JsonResponse({
+        'status': req.status,
+        'logs': req.console_logs
+    })
 
 
 def payment_success_view(request):
@@ -577,7 +670,7 @@ def export_leads_csv(request):
 
         lead_email = getattr(lead, 'email', "") or ""
         if not has_access:
-            if delete_email and '@' in lead_email:
+            if getattr(lead, 'email', '') and '@' in lead_email:
                 email_parts = lead_email.split('@')
                 lead_email = f"{email_parts[0][:1]}***@{email_parts[1]}"
             else:

@@ -60,7 +60,6 @@
             line-height: 1.5;
         }
 
-        /* --- Form Input Fields Architecture Styling --- */
         form {
             display: flex;
             flex-direction: column;
@@ -109,13 +108,33 @@
             background-color: #ffffff;
         }
 
-        textarea {
-            resize: vertical;
-            min-height: 100px;
+        /* Styling for our new dynamic city input boxes */
+        .dynamic-city-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .dynamic-city-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: var(--text-dark);
+            box-sizing: border-box;
+            background-color: #f8fafc;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .dynamic-city-input:focus {
+            outline: none;
+            border-color: var(--primary-bg);
+            background-color: #ffffff;
         }
 
         .btn-submit {
-            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
             color: white;
             padding: 14px 24px;
             border: none;
@@ -123,22 +142,31 @@
             font-weight: 700;
             font-size: 1.05rem;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(56, 161, 105, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
             text-align: center;
             margin-top: 10px;
         }
 
-        .btn-submit:hover {
+        /* Disabled State Rules */
+        .btn-disabled {
+            background: #cbd5e0 !important;
+            color: #718096 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        /* Active State Rules */
+        .btn-active {
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%) !important;
+            box-shadow: 0 4px 14px rgba(56, 161, 105, 0.3);
+        }
+
+        .btn-active:hover {
             transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
         }
 
-        .btn-submit:active {
-            transform: translateY(1px);
-        }
-
-        /* --- Profile Dropdown Layout Styles --- */
         .nav-container {
             display: flex;
             align-items: center;
@@ -271,7 +299,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{% url 'request_custom_scrape' %}">
+    <form method="POST" action="{% url 'request_custom_scrape' %}" onsubmit="return bundleCityFieldsBeforeSubmit()">
         {% csrf_token %}
         
         {% if form.errors %}
@@ -306,9 +334,15 @@
                 <label for="{{ form.state.id_for_label }}">State Focus</label>
                 {{ form.state }}
             </div>
-            <div class="form-group" id="city-group-box" style="grid-column: span 1;">
-                <label for="{{ form.city_or_region.id_for_label }}" id="city-input-label">City or Territory Regions</label>
-                {{ form.city_or_region }}
+            
+            <div class="form-group" id="city-group-box">
+                <label id="dynamic-city-label">Target City Regions</label>
+                
+                <div style="display: none !important;">
+                    {{ form.city_or_region }}
+                </div>
+
+                <div id="dynamicCityInputsContainer" class="dynamic-city-wrapper"></div>
                 
                 <div id="directory-alert" style="display: none; margin-top: 8px; padding: 10px 14px; background-color: rgba(43, 108, 176, 0.08); border-left: 4px solid #2b6cb0; border-radius: 6px; font-size: 0.85rem; color: #2d3748; line-height: 1.4; box-sizing: border-box;">
                     🎯 <strong>Instant Download Available:</strong> Our data engine has already scraped this specific region! Submitting this form will securely skip production delays and route your session to the catalog interface to unlock the file immediately for <strong>$9.99</strong>.
@@ -316,19 +350,7 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="{{ form.chamber_name.id_for_label }}">Chamber of Commerce Target Names <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(optional)</span></label>
-            {{ form.chamber_name }}
-            <span style="font-size: 0.8rem; color: #718096; font-weight: 500;">List the specific Chambers of Commerce (one per line or comma-separated).</span>
-        </div>
-
-        <div class="form-group">
-            <label for="{{ form.chamber_url.id_for_label }}">Chamber Membership Directory URL Links <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(optional)</span></label>
-            {{ form.chamber_url }}
-            <span style="font-size: 0.8rem; color: #718096; font-weight: 500;">Provide the direct links showing their public online membership directory index layout.</span>
-        </div>
-
-        <button type="submit" id="submit-btn" class="btn-submit">Submit & Go to Secure Checkout ($8.00)</button>
+        <button type="submit" id="submit-btn" class="btn-submit btn-disabled" disabled>Fill Required Target Locations to Activate Checkout</button>
     </form>
 </div>
 
@@ -352,78 +374,120 @@ window.onclick = function(event) {
     }
 }
 
-// Client-Side Async Real-Time Active Directory City Verification Loop
 document.addEventListener("DOMContentLoaded", function() {
-    const cityInput = document.getElementById("id_city_or_region");
-    const alertBox = document.getElementById("directory-alert");
+    const hiddenNativeCityInput = document.getElementById("id_city_or_region");
     const quantitySelect = document.getElementById("id_chambers_count");
+    const stateSelect = document.getElementById("id_state");
     const submitBtn = document.getElementById("submit-btn");
-    
-    // Elements added for dynamic text-block adaptation logic
+    const alertBox = document.getElementById("directory-alert");
+    const dynamicInputsContainer = document.getElementById("dynamicCityInputsContainer");
+    const dynamicCityLabel = document.getElementById("dynamic-city-label");
     const locationRowContainer = document.getElementById("location-row-container");
-    const stateGroupBox = document.getElementById("state-group-box");
     const cityGroupBox = document.getElementById("city-group-box");
-    const cityInputLabel = document.getElementById("city-input-label");
     
     let cachedCities = [];
 
-    if (cityInput && alertBox) {
-        fetch("{% url 'active_cities_api' %}")
-            .then(response => response.json())
-            .then(data => {
-                cachedCities = data.active_cities;
-            })
-            .catch(err => console.error("Database directory coordinates sync error:", err));
+    // Pre-cache city indexes for instant verification matches
+    fetch("{% url 'active_cities_api' %}")
+        .then(response => response.json())
+        .then(data => { cachedCities = data.active_cities; })
+        .catch(err => console.error("Database directory coordinates sync error:", err));
 
-        cityInput.addEventListener("input", function() {
-            const userInput = cityInput.value.trim().toLowerCase();
-            const matchFound = cachedCities.some(function(city) {
-                return userInput.includes(city) || city.includes(userInput);
-            });
-            
-            if (userInput.length > 2 && matchFound) {
-                alertBox.style.display = "block";
-            } else {
-                alertBox.style.display = "none";
+    function syncAndCheckFulfillment() {
+        const customInputs = document.querySelectorAll(".dynamic-city-target");
+        let allFilled = true;
+        let anyMatchFound = false;
+
+        customInputs.forEach(input => {
+            const val = input.value.trim().toLowerCase();
+            if (!val) {
+                allFilled = false;
+            } else if (cachedCities.some(city => val.includes(city) || city.includes(val))) {
+                anyMatchFound = true;
             }
         });
-    }
 
-    // Dynamic UI Component Controller Engine (Handles prices AND blocks expansion)
-    if (quantitySelect && submitBtn) {
-        function updateUIForQuantity() {
-            const qty = parseInt(quantitySelect.value) || 1;
-            let totalCost = qty * 8;
-            if (qty === 5) {
-                totalCost = 32; // Buy 4, Get 1 Free Promo Application
-            }
-            submitBtn.textContent = `Submit & Go to Secure Checkout ($${totalCost}.00)`;
-
-            // 💡 INTELLIGENT BLOCK EXPANSION DANCE:
-            if (qty > 1) {
-                // Transform grid structure to full row format and convert city element to a large text box block
-                locationRowContainer.style.display = "flex";
-                locationRowContainer.style.flexDirection = "column";
-                cityGroupBox.style.gridColumn = "span 2";
-                
-                // Dynamically modify attributes to allow multi-line entries visually
-                cityInput.style.height = "110px";
-                cityInputLabel.innerHTML = `Target Cities / Regions <span style="font-weight: normal; color: #718096; font-size: 0.85rem;">(Please list your ${qty} target areas, one per line or comma-separated)</span>`;
-            } else {
-                // Revert completely back to standard single layout tracking rows
-                locationRowContainer.style.display = "grid";
-                locationRowContainer.style.gridTemplateColumns = "1fr 1fr";
-                cityGroupBox.style.gridColumn = "span 1";
-                cityInput.style.height = "auto";
-                cityInputLabel.textContent = "City or Territory Regions";
-            }
+        // Trigger Instant Catalogue notice alerts dynamically
+        if (customInputs.length === 1 && anyMatchFound) {
+            alertBox.style.display = "block";
+        } else {
+            alertBox.style.display = "none";
         }
 
-        // Initialize adjustments and set up event listeners
-        quantitySelect.addEventListener("change", updateUIForQuantity);
-        updateUIForQuantity();
+        // Validate state dropdown selection too
+        const stateSelected = stateSelect && stateSelect.value !== "";
+
+        // Enforce Button Guardrail Status
+        if (allFilled && customInputs.length > 0 && stateSelected) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("btn-disabled");
+            submitBtn.classList.add("btn-active");
+            
+            const qty = parseInt(quantitySelect.value) || 1;
+            let currentCost = qty * 8;
+            if (qty === 5) currentCost = 32;
+            submitBtn.textContent = `Submit & Go to Secure Checkout ($${currentCost}.00)`;
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove("btn-active");
+            submitBtn.classList.add("btn-disabled");
+            submitBtn.textContent = "Fill Required Target Locations to Activate Checkout";
+        }
+    }
+
+    function renderDynamicFieldsLayout() {
+        const qty = parseInt(quantitySelect.value) || 1;
+        dynamicInputsContainer.innerHTML = ""; // Empty container
+
+        // Grid system formatting adjustments for layout proportions
+        if (qty > 1) {
+            locationRowContainer.style.display = "flex";
+            locationRowContainer.style.flexDirection = "column";
+            cityGroupBox.style.gridColumn = "span 2";
+            dynamicCityLabel.innerHTML = `Target City Regions <span style="color: #718096; font-size: 0.85rem; font-weight: normal;">(Please specify your ${qty} choices below)</span>`;
+        } else {
+            locationRowContainer.style.display = "grid";
+            locationRowContainer.style.gridTemplateColumns = "1fr 1fr";
+            cityGroupBox.style.gridColumn = "span 1";
+            dynamicCityLabel.textContent = "City or Territory Regions";
+        }
+
+        // Spawn precise input box layers
+        for (let i = 1; i <= qty; i++) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.required = true;
+            input.className = "dynamic-city-target";
+            input.placeholder = `Location Target Box #${i} (e.g., San Diego)`;
+            input.addEventListener("input", syncAndCheckFulfillment);
+            dynamicInputsContainer.appendChild(input);
+        }
+
+        syncAndCheckFulfillment();
+    }
+
+    if (quantitySelect && stateSelect) {
+        quantitySelect.addEventListener("change", renderDynamicFieldsLayout);
+        stateSelect.addEventListener("change", syncAndCheckFulfillment);
+        renderDynamicFieldsLayout(); // Initial runtime setup
     }
 });
+
+function bundleCityFieldsBeforeSubmit() {
+    const customInputs = document.querySelectorAll(".dynamic-city-target");
+    const finalValues = [];
+    
+    customInputs.forEach(input => {
+        if (input.value.trim()) finalValues.push(input.value.trim());
+    });
+
+    // Compress values into a single string line and feed it directly to Django's matching backend form target field
+    const hiddenNativeField = document.getElementById("id_city_or_region");
+    if (hiddenNativeField) {
+        hiddenNativeField.value = finalValues.join(", ");
+    }
+    return true;
+}
 </script>
 
 </body>

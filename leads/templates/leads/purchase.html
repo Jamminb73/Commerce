@@ -3,317 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipeline Core | Control Console</title>
+    <title>Pipeline Core Console | Control Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        :root {
-            --primary-bg: #1a2a6c;
-            --accent-color: #f39c12;
-            --text-dark: #2d3748;
+        /* Neon-border branding styles matching your console framework matrix */
+        .neon-border-deck {
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
         }
-        /* Sticky Navigation Bar Setup from Home Page */
-        nav {
-            position: -webkit-sticky;
-            position: sticky;
-            top: 0;
-            z-index: 10000;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        .dynamic-city-input {
+            transition: all 0.2s ease-in-out;
         }
-        /* Profile Dropdown Layout Styles matching index.html */
-        .profile-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-        .dropdown-trigger {
-            background: none;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-            outline: none;
-        }
-        .avatar-fallback {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--accent-color);
-            box-sizing: border-box;
-            transition: transform 0.2s;
-            background-color: white;
-            color: var(--primary-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-        }
-        .avatar-fallback:hover {
-            transform: scale(1.05);
-        }
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: #ffffff;
-            min-width: 250px;
-            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.15);
-            border-radius: 10px;
-            z-index: 1000;
-            margin-top: 10px;
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            text-align: left;
-        }
-        .dropdown-header {
-            padding: 16px;
-            background: #f8fafc;
-        }
-        .dropdown-header strong {
-            color: var(--primary-bg);
-            font-size: 0.95rem;
-        }
-        .user-email {
-            display: block;
-            font-size: 0.8rem;
-            color: #718096;
-            margin-top: 2px;
-            word-break: break-all;
-        }
-        .dropdown-content hr {
-            border: 0;
-            border-top: 1px solid #e2e8f0;
-            margin: 0;
-        }
-        .menu-item {
-            color: var(--text-dark);
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: background 0.2s, color 0.2s;
-        }
-        .menu-item:hover {
-            background-color: #f1f5f9;
-        }
-        .text-danger {
-            color: #718096 !important;
+        .dynamic-city-input:focus {
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
         }
     </style>
 </head>
-<body class="bg-slate-950 font-sans antialiased text-white m-0 min-h-screen">
+<body class="bg-slate-950 font-sans antialiased text-slate-200 m-0 min-h-screen">
 
-    <nav style="background: var(--primary-bg); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <h2 style="color: white; margin: 0; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px;">Local Commerce Leads</h2>
-            
-            {% if request.user.is_staff %}
-                <a href="{% url 'admin:index' %}" 
-                   style="background-color: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;"
-                   onmouseover="this.style.backgroundColor='#dc2626'"
-                   onmouseout="this.style.backgroundColor='#ef4444'">
-                    ⚙️ Admin Panel
-                </a>
-            {% endif %}
+    <nav class="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
+            <h2 class="text-xl font-bold tracking-tight text-white">ChamberPipeline <span class="text-xs font-mono text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded ml-2">CORE CORE V2</span></h2>
         </div>
-        
-        <div class="nav-container">
-            <div class="profile-dropdown">
-                <button class="dropdown-trigger" onclick="toggleDropdown(event)">
-                    {% if avatar_url %}
-                        <img src="{{ avatar_url }}" alt="Profile" class="w-10 h-10 rounded-full border-2 border-[#f39c12] box-border transition transform hover:scale-105">
-                    {% else %}
-                        <div class="avatar-fallback">{{ username|slice:":2"|upper }}</div>
-                    {% endif %}
-                </button>
-                
-                <div id="profileMenu" class="dropdown-content">
-                    <div class="dropdown-header">
-                        <strong>{{ username }}</strong>
-                        <span class="user-email">{{ user_email }}</span>
-                    </div>
-                    <hr>
-                    
-                    <a href="{% url 'about_page' %}" class="menu-item">ℹ️ About Us</a>
-                    <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
-                    <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
-                    
-                    {% if request.user.is_staff %}
-                        <a href="{% url 'admin:index' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #ef4444; font-weight: 600;">
-                            🛠️ Native Django Tables
-                        </a>
-                        <a href="{% url 'blog:admin_dashboard' %}" class="menu-item" style="background-color: #f8fafc; border-left: 3px solid #f39c12; font-weight: 600; color: #b45309;">
-                            📰 Manage Blog Posts
-                        </a>
-                    {% endif %}
-                    
-                    <hr>
-                    <a href="{% url 'logout' %}" class="menu-item text-danger">🚪 Logout</a>
-                </div>
-            </div>
+        <div class="flex items-center gap-4 text-sm font-semibold">
+            <span class="text-slate-400 font-mono">Operator: <span class="text-slate-200">{{ username }}</span></span>
+            <a href="/leads/" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition shadow-md">
+                📋 Global Workspace Leads
+            </a>
         </div>
     </nav>
 
-    <div class="min-h-[calc(100vh-73px)] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="w-full max-w-2xl mx-auto">
+    <div class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-2xl font-extrabold text-white tracking-tight sm:text-3xl">Internal Automation Engine Deck</h1>
+            <p class="text-sm text-slate-400 mt-2">Direct root-level database execution cockpit bypassing payment rails.</p>
+        </div>
+
+        {% if messages %}
+            <div class="mb-6 space-y-2">
+                {% for message in messages %}
+                    <div class="p-4 rounded-xl text-sm font-medium border bg-green-950/40 text-green-400 border-green-500/20 shadow-lg">
+                        ✅ {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="bg-slate-900 border rounded-2xl shadow-2xl p-8 neon-border-deck">
             
-            <div class="bg-green-500 border border-green-600/30 rounded-2xl shadow-2xl p-3 shadow-green-950/20">
-                
-                <div class="bg-slate-900 backdrop-blur-md border border-slate-800 rounded-xl p-8 md:p-10">
-                    
-                    <div class="border-b border-slate-700/50 pb-6 mb-8">
-                        <div class="flex items-center space-x-3">
-                            <span class="flex h-3 w-3 relative">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                            </span>
-                            <h1 class="text-2xl font-bold tracking-tight text-slate-100">
-                                Pipeline Core: <span class="text-green-400">Request Target Scrape</span>
-                            </h1>
-                        </div>
-                        <p class="mt-2 text-sm text-slate-400 leading-relaxed">
-                            Specify regional business indexing coordinates to target, extract, and seed directly into the live database framework.
-                        </p>
+            <div class="border-b border-slate-800 pb-5 mb-6">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    ⚡ Fast-Track Batch Dataset Ingestion Form
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Specify geographic parameters. The core Discovery Engine will resolve domains and map datasets hands-off.</p>
+            </div>
+
+            <form method="POST" action="{% url 'purchase' %}" onsubmit="return consolidateAdminTargetFields()">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Target State Focus</label>
+                        <select name="state_focus" id="adminStateSelect" required onchange="evaluateAdminButtonGuardrail()"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-medium focus:outline-none focus:border-green-500/50 cursor-pointer transition">
+                            <option value="">Select Target State...</option>
+                            <option value="AL">Alabama</option>
+                            <option value="AK">Alaska</option>
+                            <option value="AZ">Arizona</option>
+                            <option value="AR">Arkansas</option>
+                            <option value="CA">California</option>
+                            <option value="CO">Colorado</option>
+                            <option value="CT">Connecticut</option>
+                            <option value="DE">Delaware</option>
+                            <option value="FL">Florida</option>
+                            <option value="GA">Georgia</option>
+                            <option value="HI">Hawaii</option>
+                            <option value="ID">Idaho</option>
+                            <option value="IL">Illinois</option>
+                            <option value="IN">Indiana</option>
+                            <option value="IA">Iowa</option>
+                            <option value="KS">Kansas</option>
+                            <option value="KY">Kentucky</option>
+                            <option value="LA">Louisiana</option>
+                            <option value="ME">Maine</option>
+                            <option value="MD">Maryland</option>
+                            <option value="MA">Massachusetts</option>
+                            <option value="MI">Michigan</option>
+                            <option value="MN">Minnesota</option>
+                            <option value="MS">Mississippi</option>
+                            <option value="MO">Missouri</option>
+                            <option value="MT">Montana</option>
+                            <option value="NE">Nebraska</option>
+                            <option value="NV">Nevada</option>
+                            <option value="NH">New Hampshire</option>
+                            <option value="NJ">New Jersey</option>
+                            <option value="NM">New Mexico</option>
+                            <option value="NY">New York</option>
+                            <option value="NC">North Carolina</option>
+                            <option value="ND">North Dakota</option>
+                            <option value="OH">Ohio</option>
+                            <option value="OK">Oklahoma</option>
+                            <option value="OR">Oregon</option>
+                            <option value="PA">Pennsylvania</option>
+                            <option value="RI">Rhode Island</option>
+                            <option value="SC">South Carolina</option>
+                            <option value="SD">South Dakota</option>
+                            <option value="TN">Tennessee</option>
+                            <option value="TX">Texas</option>
+                            <option value="UT">Utah</option>
+                            <option value="VT">Vermont</option>
+                            <option value="VA">Virginia</option>
+                            <option value="WA">Washington</option>
+                            <option value="WV">West Virginia</option>
+                            <option value="WI">Wisconsin</option>
+                            <option value="WY">Wyoming</option>
+                        </select>
                     </div>
 
-                    {% if status == 'success' %}
-                        <div class="mb-6 p-4 bg-green-950/40 border border-green-500/50 text-green-200 text-sm rounded-xl flex items-center space-x-2">
-                            <span>✅</span> <span>{{ message }}</span>
-                        </div>
-                    {% elif status == 'error' %}
-                        <div class="mb-6 p-4 bg-red-950/40 border border-red-500/50 text-red-200 text-sm rounded-xl flex items-center space-x-2">
-                            <span>🚨</span> <span>{{ message }}</span>
-                        </div>
-                    {% endif %}
-
-                    <form method="POST" class="space-y-6">
-                        {% csrf_token %}
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">State Focus</label>
-                                <div class="relative">
-                                    <select name="state_focus" required 
-                                            class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150 appearance-none cursor-pointer">
-                                        <option value="">Select State...</option>
-                                        <option value="AL">Alabama</option>
-                                        <option value="AK">Alaska</option>
-                                        <option value="AZ">Arizona</option>
-                                        <option value="AR">Arkansas</option>
-                                        <option value="CA">California</option>
-                                        <option value="CO">Colorado</option>
-                                        <option value="CT">Connecticut</option>
-                                        <option value="DE">Delaware</option>
-                                        <option value="FL">Florida</option>
-                                        <option value="GA">Georgia</option>
-                                        <option value="HI">Hawaii</option>
-                                        <option value="ID">Idaho</option>
-                                        <option value="IL">Illinois</option>
-                                        <option value="IN">Indiana</option>
-                                        <option value="IA">Iowa</option>
-                                        <option value="KS">Kansas</option>
-                                        <option value="KY">Kentucky</option>
-                                        <option value="LA">Louisiana</option>
-                                        <option value="ME">Maine</option>
-                                        <option value="MD">Maryland</option>
-                                        <option value="MA">Massachusetts</option>
-                                        <option value="MI">Michigan</option>
-                                        <option value="MN">Minnesota</option>
-                                        <option value="MS">Mississippi</option>
-                                        <option value="MO">Missouri</option>
-                                        <option value="MT">Montana</option>
-                                        <option value="NE">Nebraska</option>
-                                        <option value="NV">Nevada</option>
-                                        <option value="NH">New Hampshire</option>
-                                        <option value="NJ">New Jersey</option>
-                                        <option value="NM">New Mexico</option>
-                                        <option value="NY">New York</option>
-                                        <option value="NC">North Carolina</option>
-                                        <option value="ND">North Dakota</option>
-                                        <option value="OH">Ohio</option>
-                                        <option value="OK">Oklahoma</option>
-                                        <option value="OR">Oregon</option>
-                                        <option value="PA">Pennsylvania</option>
-                                        <option value="RI">Rhode Island</option>
-                                        <option value="SC">South Carolina</option>
-                                        <option value="SD">South Dakota</option>
-                                        <option value="TN">Tennessee</option>
-                                        <option value="TX">Texas</option>
-                                        <option value="UT">Utah</option>
-                                        <option value="VT">Vermont</option>
-                                        <option value="VA">Virginia</option>
-                                        <option value="WA">Washington</option>
-                                        <option value="WV">West Virginia</option>
-                                        <option value="WI">Wisconsin</option>
-                                        <option value="WY">Wyoming</option>
-                                    </select>
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="md:col-span-2">
-                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">City or Territory Region</label>
-                                <input type="text" name="region_name" required placeholder="e.g., Kennesaw" 
-                                       class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
-                            </div>
-                        </div>
-
-                        <hr class="border-slate-700/40 my-2">
-
-                        <div class="space-y-5 bg-slate-950/40 p-5 rounded-xl border border-slate-700/30">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Advanced Targeting Overrides (Optional)</h3>
-                            
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1.5">Chamber of Commerce Target Names</label>
-                                <input type="text" name="chamber_name" placeholder="e.g., Cobb County Chamber" 
-                                       class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
-                                <p class="text-xs text-slate-500 mt-1">Leave blank to let our data engine locate them automatically.</p>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-medium text-slate-300 mb-1.5">Chamber Membership Directory URL Link</label>
-                                <input type="url" name="target_url" placeholder="Provide specific membership index link here if you have it" 
-                                       class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition duration-150">
-                                <p class="text-xs text-slate-500 mt-1">Direct link showing their public online membership directory index layout.</p>
-                            </div>
-                        </div>
-
-                        <div class="pt-2">
-                            <button type="submit" 
-                                    class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-150 shadow-lg shadow-green-900/20 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-800 cursor-pointer text-center">
-                                Execute Automated Scrape & Build Database
-                            </button>
-                        </div>
-                    </form>
-
+                    <div>
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Target Batch Volume Quantity</label>
+                        <select id="adminBatchSize" required onchange="generateAdminCityFields()"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-medium focus:outline-none focus:border-green-500/50 cursor-pointer transition">
+                            <option value="1">1 Target Location Node</option>
+                            <option value="2">2 Target Location Nodes</option>
+                            <option value="3">3 Target Location Nodes</option>
+                            <option value="4">4 Target Location Nodes</option>
+                            <option value="5">5 Target Location Nodes (Package Threshold)</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            
+
+                <div class="mb-6">
+                    <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Target City Regions</label>
+                    
+                    <input type="hidden" name="region_name" id="adminMasterCityString">
+
+                    <div id="adminCityBoxesContainer" class="flex flex-col gap-3"></div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800">
+                    <button type="submit" id="adminSubmitBtn" disabled
+                            class="w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl transition duration-200 text-center text-sm">
+                        Console Locked: Clear Required Target Fields to Activate Engine
+                    </button>
+                </div>
+            </form>
+
         </div>
+        
+        <div class="mt-6 flex justify-between items-center text-xs font-mono text-slate-600 px-2">
+            <span>Session Environment: Localhost Loopback</span>
+            <span>Database Pipeline Target: PostgreSQL</span>
+        </div>
+
     </div>
 
     <script>
-    function toggleDropdown(event) {
-        event.stopPropagation();
-        var menu = document.getElementById("profileMenu");
-        if (menu.style.display === "block") {
-            menu.style.display = "none";
+    function generateAdminCityFields() {
+        const container = document.getElementById("adminCityBoxesContainer");
+        const count = parseInt(document.getElementById("adminBatchSize").value) || 1;
+        container.innerHTML = ""; // Empty container
+
+        for (let i = 1; i <= count; i++) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.required = true;
+            input.className = "admin-custom-city-input w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-mono placeholder-slate-700 focus:outline-none focus:border-green-500/50 dynamic-city-input";
+            input.placeholder = `Ingestion Target Node Field #${i} (e.g., San Diego)`;
+            input.addEventListener("input", evaluateAdminButtonGuardrail);
+            container.appendChild(input);
+        }
+        evaluateAdminButtonGuardrail(); // Calculate locks right away
+    }
+
+    function evaluateAdminButtonGuardrail() {
+        const inputs = document.querySelectorAll(".admin-custom-city-input");
+        const stateSelect = document.getElementById("adminStateSelect");
+        const submitBtn = document.getElementById("adminSubmitBtn");
+        
+        let allFilled = true;
+        inputs.forEach(input => {
+            if (!input.value.trim()) allFilled = false;
+        });
+
+        const stateSelected = stateSelect && stateSelect.value !== "";
+
+        if (allFilled && inputs.length > 0 && stateSelected) {
+            submitBtn.disabled = false;
+            submitBtn.className = "w-full bg-green-600 hover:bg-green-500 text-white font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg shadow-green-950/30 cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5 active:translate-y-0";
+            submitBtn.innerText = "🚀 Ignite Core Automation Pipeline Execution";
         } else {
-            menu.style.display = "block";
+            submitBtn.disabled = true;
+            submitBtn.className = "w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm";
+            submitBtn.innerText = "Console Locked: Clear Required Target Fields to Activate Engine";
         }
     }
 
-    window.onclick = function(event) {
-        var menu = document.getElementById("profileMenu");
-        if (menu && menu.style.display === "block") {
-            if (!event.target.closest('.profile-dropdown')) {
-                menu.style.display = "none";
-            }
-        }
+    function consolidateAdminTargetFields() {
+        const inputs = document.querySelectorAll(".admin-custom-city-input");
+        const finalValues = [];
+        
+        inputs.forEach(input => {
+            if (input.value.trim()) finalValues.push(input.value.trim());
+        });
+
+        // Pack values tightly together and slide them back into Django's hidden master processing receiver
+        document.getElementById("adminMasterCityString").value = finalValues.join(", ");
+        return true;
     }
+
+    // Fire generation loop on viewport load entry sequence
+    document.addEventListener("DOMContentLoaded", generateAdminCityFields);
     </script>
-
 </body>
 </html>

@@ -3,6 +3,8 @@ import uuid
 import datetime
 import stripe
 import threading
+import time    # 🧭 REQUIRED: Active background thread throttle module
+import random  # 🧭 REQUIRED: Random value selector generator
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse  # <-- Imported for secure dynamic reverse routing
@@ -456,10 +458,11 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                 }
             )
             
-            # Fire off your management script's unified dynamic route handler
+            # 🚀 WORKER EXECUTION TRIGGER: Hand parameters over to our newly refactored discovery layer handler
             scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
             
             if idx < len(cities):
+                # ⏳ ANTIBOT THROTTLE INTERVAL: Pausing pipeline threads to safeguard system identity layers
                 log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
                 time.sleep(random.uniform(3.0, 5.0))
         

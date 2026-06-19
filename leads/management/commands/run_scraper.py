@@ -199,7 +199,7 @@ class Command(BaseCommand):
             target_page = page.evaluate('''() => {
                 let anchors = Array.from(document.querySelectorAll('a'));
                 let bestLink = null;
-                let highestScore = 0;
+                let highestScore = -999;
 
                 let isValidLink = (a) => {
                     let hrefAttr = a.getAttribute('href') || '';
@@ -225,15 +225,22 @@ class Command(BaseCommand):
                     let href = (anchor.getAttribute('href') || '').toLowerCase();
                     
                     let currentScore = 0;
+                    let matchedAny = false;
                     
                     // Score based on text and href attributes
                     for (let rule of scoringMatrix) {
                         if (rule.keywords.some(kw => text.includes(kw) || href.includes(kw))) {
                             currentScore = Math.max(currentScore, rule.score);
+                            matchedAny = true;
                         }
                     }
 
-                    if (currentScore > highestScore) {
+                    // 🌟 CRITICAL ANTI-PROGRAM SAFEGUARD: Heavily penalize landing page traps
+                    if (text.includes('program') || href.includes('program') || text.includes('workshop') || href.includes('workshop')) {
+                        currentScore -= 60;
+                    }
+
+                    if (matchedAny && currentScore > highestScore) {
                         highestScore = currentScore;
                         bestLink = anchor.href;
                     }

@@ -1,5 +1,8 @@
-<button type="{{ button_type|default:'button' }}" 
-        class="px-6 py-3 font-semibold rounded-lg shadow-md transition duration-200 ease-in-out {% if 'bg-' not in button_classes and 'btn-' not in button_classes %}bg-[#f39c12] text-white border-0{% endif %} {{ button_classes }}"
-        style="{% if 'bg-' not in button_classes and 'btn-' not in button_classes %}background-color: #f39c12; color: #ffffff;{% endif %}">
+<button 
+    type="{{ button_type|default:'button' }}" 
+    class="px-6 py-3 font-semibold rounded-lg shadow-md transition duration-200 ease-in-out {% if 'bg-' not in button_classes and 'btn-' not in button_classes %}bg-[#f39c12] text-white border-0{% endif %} {{ button_classes }}"
+    {% if 'bg-' not in button_classes and 'btn-' not in button_classes %}
+    style="background-color: #f39c12; color: #ffffff;"
+    {% endif %}>
     {{ button_text }}
 </button>

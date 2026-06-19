@@ -15,6 +15,9 @@ class ChamberDirectory(models.Model):
     directory_url = models.URLField(max_length=500, blank=True, null=True, help_text="The source URL scraped")
     is_active = models.BooleanField(default=True, help_text="Controls visibility on the front-end market")
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # 🌟 Added temporary storage field for tracking risk-free preview data layouts
+    staged_leads_data = models.JSONField(default=list, blank=True, help_text="Temporary storage for previews")
 
     class Meta:
         verbose_name_plural = "Chamber Directories"

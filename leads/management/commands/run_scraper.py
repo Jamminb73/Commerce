@@ -503,3 +503,6 @@ class Command(BaseCommand):
             browser.close()
 
         return staged_json_payload, resolved_url
+    
+    # this code is not being nice at all
+    

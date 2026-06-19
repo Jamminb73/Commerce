@@ -487,13 +487,15 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
         cities = [c.strip() for c in city_string.split(',') if c.strip()]
         log_to_database(f"🗺️ [SYSTEM CORE]: Target batch coordinates parsed: {len(cities)} location nodes found ({', '.join(cities)}).")
 
+        created_directory_ids = []
+
         for idx, current_city in enumerate(cities, start=1):
             log_to_database(f"\n📍 [NODE {idx}/{len(cities)}]: Initiating data pipeline sweep for {current_city}, {state.upper()}...")
             
             derived_chamber_name = f"{current_city} Chamber of Commerce"
             derived_fallback_url = f"https://www.google.com/search?q={current_city.replace(' ', '+')}+{state}+chamber+of+commerce"
             
-            directory_obj, _ = ChamberDirectory.objects.get_or_create(
+            directory_obj, created = ChamberDirectory.objects.get_or_create(
                 city_or_region__iexact=current_city,
                 state__iexact=state,
                 defaults={
@@ -505,12 +507,21 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                 }
             )
             
+            if created:
+                created_directory_ids.append(directory_obj.id)
+            
             scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
             
             if idx < len(cities):
                 log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
                 time.sleep(random.uniform(3.0, 5.0))
         
+        # 🛡️ THE CLEANUP INTERCEPT MATRIX
+        leads_found = ChamberLead.objects.filter(organization__icontains=city_string).count()
+        if leads_found == 0:
+            log_to_database("⚠️ [CLEANUP INTERCEPT]: Pipeline yielded zero verified results. Pruning empty directory nodes...")
+            ChamberDirectory.objects.filter(id__in=created_directory_ids).delete()
+            
         req = ChamberRequest.objects.get(id=request_id)
         req.status = 'completed'
         req.save()

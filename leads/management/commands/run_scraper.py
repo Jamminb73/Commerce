@@ -3,13 +3,13 @@ import time
 import random
 import re
 import urllib.parse
+import json
 
-# Force Django to allow database operations inside Playwright's loop context
+# Force Django to allow database operations inside Playwright's loop context (if used elsewhere)
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 from django.core.management.base import BaseCommand
 from playwright.sync_api import sync_playwright
-from leads.models import ChamberLead, ChamberDirectory 
 from nameparser import HumanName
 
 # 🛡️ THE HIGH-FIDELITY EXTRACTION FILTER MATRIX
@@ -93,7 +93,7 @@ def parse_name(raw_name):
 
 
 class Command(BaseCommand):
-    help = 'Runs the Playwright proximity scraper to collect Chamber leads into a staged payload schema.'
+    help = 'Runs the Playwright proximity scraper to collect Chamber leads entirely in memory.'
 
     def add_arguments(self, parser):
         parser.add_argument('--url', type=str, help='Target URL to scrape directly')
@@ -105,19 +105,19 @@ class Command(BaseCommand):
         custom_name = options.get('name')
         target_state = options.get('state')
 
+        # In-memory session payload collection dictionary
+        # ZERO DATABASE OBJECTS INITIALIZED OR ACCESSED HERE
+        session_results_manifest = {}
+
         if target_url and custom_name:
             self.stdout.write(self.style.SUCCESS(f"🚀 Routing Dynamic Target Pipeline Execution for {custom_name}..."))
+            staged_leads, dynamic_url = self.refactored_chamber_scoper(target_url, custom_name)
             
-            directory_obj, _ = ChamberDirectory.objects.get_or_create(
-                name=custom_name,
-                defaults={
-                    'state': target_state if target_state else 'US',
-                    'directory_url': target_url,
-                    'is_active': True
-                }
-            )
-            self.refactored_chamber_scoper(target_url, custom_name, directory_obj)
-            
+            session_results_manifest[custom_name] = {
+                'directory_url': dynamic_url or target_url,
+                'state': target_state if target_state else 'US',
+                'leads': staged_leads
+            }
         else:
             chamber_market = [
                 ('https://metroatlantachamber.com/meet-the-team/', 'Metro Atlanta Chamber', 'GA'),
@@ -125,21 +125,27 @@ class Command(BaseCommand):
                 ('https://www.gwinnettchamber.org/staff/', 'Gwinnett Chamber', 'GA')
             ]
             
-            self.stdout.write(self.style.SUCCESS("🚀 Starting Standard Chamber Pipeline Database Scraper..."))
+            self.stdout.write(self.style.SUCCESS("🚀 Starting Standard Chamber Pipeline Pure Memory Scraper..."))
 
             for url, name, state in chamber_market:
-                directory_obj, _ = ChamberDirectory.objects.get_or_create(
-                    name=name,
-                    defaults={
-                        'state': state,
-                        'directory_url': url,
-                        'is_active': True
-                    }
-                )
-                self.refactored_chamber_scoper(url, name, directory_obj)
+                staged_leads, dynamic_url = self.refactored_chamber_scoper(url, name)
+                session_results_manifest[name] = {
+                    'directory_url': dynamic_url or url,
+                    'state': state,
+                    'leads': staged_leads
+                }
                 time.sleep(random.uniform(2.0, 4.0))
 
         self.stdout.write(self.style.SUCCESS("\n🎉 Done! Proximity staging extraction finished."))
+        
+        # Output standard summary metrics for checkout/preview reference without DB commits
+        for chamber, metrics in session_results_manifest.items():
+            self.stdout.write(f"📊 Preview Ready: {chamber} ({len(metrics['leads'])} Staged Vectors Compiled). Payment Status: Pending.")
+            
+        # ⚠️ CRITICAL COMPLIANCE NOTICE: 
+        # Return the raw JSON block directly to downstream views or paywall validation logic.
+        # DO NOT call .save() or Model.objects.create() until a valid payment signature is parsed.
+        return json.dumps(session_results_manifest)
 
     def discover_chamber_url(self, page, google_url):
         """🔍 Sifter Layer: Opens Google, handles consent gates, and pulls back organic results."""
@@ -243,7 +249,10 @@ class Command(BaseCommand):
             self.stdout.write(f"⚠️ [SCOUT]: Navigation map scan incomplete: {e}")
         return base_url
 
-    def refactored_chamber_scoper(self, target_url, org_name, directory_obj):
+    def refactored_chamber_scoper(self, target_url, org_name):
+        staged_json_payload = []
+        resolved_url = target_url
+
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -259,32 +268,32 @@ class Command(BaseCommand):
             if "google.com/search" in target_url:
                 primary_domain = self.discover_chamber_url(page, target_url)
                 if primary_domain:
-                    target_url = self.crawl_for_directory_target(page, primary_domain)
-                    directory_obj.directory_url = target_url
-                    directory_obj.save()
+                    resolved_url = self.crawl_for_directory_target(page, primary_domain)
                 else:
                     self.stdout.write(self.style.ERROR("❌ [ENGINE ERROR]: Discovery link extraction failed."))
                     browser.close()
-                    return
+                    return staged_json_payload, resolved_url
 
-            self.stdout.write(f"⚙️ [PLAYWRIGHT]: Executing targeted element micro-scoping at: {target_url}")
+            self.stdout.write(f"⚙️ [PLAYWRIGHT]: Executing targeted element micro-scoping at: {resolved_url}")
             
             try:
-                page.goto(target_url, wait_until="domcontentloaded", timeout=45000)
+                page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
                 time.sleep(5) 
                 
                 for _ in range(6):
                     page.evaluate("window.scrollBy(0, 800);")
                     time.sleep(0.4)
                 
-                # 🔥 TARGETED ELEMENT MICRO-SCOPING PARSER 
+                # 🔥 DEEPER TARGETED ELEMENT MICRO-SCOPING PARSER 
                 extracted_leads = page.evaluate('''() => {
                     let data = [];
                     let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
                     
+                    // DEEPER TARGET MATRIX: Broadened selectors to parse hidden nodes or non-traditional flex wrappers
                     let containers = document.querySelectorAll(
                         'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
-                        'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article'
+                        'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
+                        'div[class*="row"], div[class*="flex"], div[class*="block"], ul > li'
                     );
                     
                     let checkedContainers = new Set();
@@ -292,9 +301,7 @@ class Command(BaseCommand):
                     containers.forEach(container => {
                         if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
                         
-                        let htmlContext = container.innerHTML || '';
                         let textContext = (container.innerText || container.textContent || '').trim();
-                        
                         let emailMatch = textContext.match(emailRegex);
                         let mailtoMatch = container.querySelector('a[href^="mailto:"]');
                         
@@ -327,8 +334,9 @@ class Command(BaseCommand):
                         }
                     });
 
+                    // FALLBACK DEPTH STRATEGY: If container grouping leaves orphan nodes behind
                     if (data.length === 0) {
-                        let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong'));
+                        let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
                         headings.forEach(h => {
                             let txt = (h.innerText || h.textContent || '').trim();
                             if (txt && txt.length > 3 && txt.length < 30 && /^[a-zA-Z\\s\\.\\-\\'’]+$/.test(txt)) {
@@ -347,11 +355,10 @@ class Command(BaseCommand):
                     return data;
                 }''')
 
-                parsed_uri = urllib.parse.urlparse(target_url)
+                parsed_uri = urllib.parse.urlparse(resolved_url)
                 base_domain = parsed_uri.netloc.replace('www.', '')
 
                 seen_names = set()
-                staged_json_payload = []
 
                 for lead in extracted_leads:
                     raw_name = lead['rawName'].strip()
@@ -394,7 +401,7 @@ class Command(BaseCommand):
                     if any(email.lower().startswith(box) for box in GENERIC_BOXES):
                         continue
 
-                    # 📦 ASSEMBLE IN-MEMORY RECORD FOR TRANSIENT STORAGE
+                    # 📦 ASSEMBLE IN-MEMORY RECORD FOR TRANSIENT EXPORT ONLY
                     staged_json_payload.append({
                         'first_name': first_name.strip().title(),
                         'last_name': last_name.strip().title(),
@@ -404,12 +411,7 @@ class Command(BaseCommand):
                     
                     self.stdout.write(f"   ⏳ Staged candidate memory structure: {first_name.title()} {last_name.title()} ({email})")
 
-                # 💎 WRITE TO SECURE JSON STAGING FIELD ON THE DIRECTORY ROW
-                # Assumes your ChamberDirectory model has a JSONField called `staged_leads_data`
-                directory_obj.staged_leads_data = staged_json_payload
-                directory_obj.save()
-                
-                self.stdout.write(self.style.SUCCESS(f"   🔒 Staged {len(staged_json_payload)} temporary lead vectors securely onto directory object model reference."))
+                self.stdout.write(self.style.SUCCESS(f"   🔒 Compiled {len(staged_json_payload)} temporary lead vectors securely in-memory."))
 
                 if len(staged_json_payload) == 0:
                     self.stdout.write(self.style.WARNING(f"   ⚠️ Micro-scoping layer returned 0 records for {org_name}."))
@@ -418,3 +420,5 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"   ❌ Execution crash on {org_name}: {e}"))
                 
             browser.close()
+
+        return staged_json_payload, resolved_url

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extraction Workspace | ChamberPipeline Telemetry</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         :root {
             --primary-bg: #1a2a6c;
@@ -113,44 +114,6 @@
             margin-bottom: 25px;
         }
 
-        .reassurance-box {
-            display: none;
-            background-color: rgba(43, 108, 176, 0.05);
-            border: 1px solid #2b6cb0;
-            border-left: 5px solid #2b6cb0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-sizing: border-box;
-            color: #2d3748;
-            line-height: 1.5;
-        }
-
-        .btn-leads-portal {
-            display: none; /* Safely remains hidden until backend marks 'completed' */
-            width: 100%;
-            text-align: center;
-            background-color: transparent;
-            color: var(--primary-bg);
-            border: 2px solid var(--primary-bg);
-            padding: 14px 24px;
-            border-radius: 8px;
-            font-size: 1.05rem;
-            font-weight: 700;
-            text-decoration: none;
-            box-sizing: border-box;
-            transition: background-color 0.2s, color 0.2s, transform 0.1s;
-        }
-
-        .btn-leads-portal:hover {
-            background-color: var(--primary-bg);
-            color: #ffffff;
-        }
-
-        .btn-leads-portal:active {
-            transform: scale(0.99);
-        }
-
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.6; }
@@ -161,9 +124,16 @@
 <body>
 
 <div class="container">
-    <div id="reassurance-notice" class="reassurance-box" style="display: block;">
-        <strong style="color: #2b6cb0; font-size: 1.05rem; display: block; margin-bottom: 6px;">💼 Transaction Secured & Order Logged</strong>
-        Your data extraction package parameters have been permanently verified and saved to your client workspace profile. Our backend engine hit an unexpected routing layout anomaly while navigating this specific directory stack, but your checkout fulfillment window is locked in. Our development operations team has been automatically notified to manually clean the regional data tables. Your completed directories will update automatically right on your dashboard!
+
+    <div id="clientFailureDeck" class="hidden border border-amber-500/30 bg-amber-50/50 rounded-xl p-6 mb-6 text-center shadow-md">
+        <strong class="text-amber-700 font-bold text-base block mb-1">⚙️ Optimization Route Engaged</strong>
+        <p class="text-sm text-slate-700 max-w-xl mx-auto">
+            This specific directory layout configuration requires structural alignment. **You have not been billed.** Our technicians are compiling this node manually for you right now.
+        </p>
+        <div class="mt-3 inline-block text-xs font-mono text-amber-800 border border-amber-500/20 bg-amber-100/60 px-4 py-1.5 rounded-lg">
+            Verification ticket logged. Clean assets will appear directly inside your profile shortly.
+        </div>
+        <a href="{% url 'leads_list' %}" class="mt-4 block text-sm font-semibold text-amber-700 underline hover:text-amber-800">Return to Leads Profile Workspace →</a>
     </div>
 
     <header>
@@ -177,15 +147,56 @@
             <div class="ticker-label">High-Fidelity Leads Compiled</div>
         </div>
         <div class="ticker-card">
-            <div class="ticker-val" style="color: #38a169;">$8.00</div>
-            <div class="ticker-label">Fulfillment Target Value</div>
+            <div class="ticker-val" style="color: #38a169;">{{ cost_string }}</div>
+            <div class="ticker-label">Unlock Price Point</div>
         </div>
     </div>
 
-    <h3 style="color: var(--text-dark); margin-bottom: 12px;">Active Operations Log:</h3>
+    <h3 style="color: var(--text-dark); margin-bottom: 12px;" class="font-semibold">Active Operations Log:</h3>
     <div id="console-logs" class="console-box">Connecting to backend automation core...</div>
 
-    <a href="{% url 'leads_list' %}" id="portal-btn" class="btn-leads-portal">Go to Leads Profile Workspace →</a>
+    <div id="clientCompletionDeck" class="hidden space-y-6 mt-6">
+        
+        <div class="bg-emerald-50 border border-emerald-500/20 rounded-xl p-5 text-center shadow-sm">
+            <h3 class="text-lg font-bold text-emerald-900">🎉 Target Extraction Complete!</h3>
+            <p class="text-sm text-emerald-700 mt-0.5">We discovered verified contact targets. Review the data payload preview matrix below to unlock full workspace access.</p>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm relative overflow-hidden">
+            <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-50 to-transparent z-10"></div>
+            
+            <h4 class="text-xs font-mono uppercase text-slate-500 tracking-wider mb-3 font-bold flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span> Sourced Data Feed Preview
+            </h4>
+
+            <div class="divide-y divide-slate-200/80 text-sm">
+                {% for lead in preview_leads %}
+                <div class="py-3 flex justify-between items-center gap-4">
+                    <div>
+                        <span class="font-bold text-slate-400 select-none blur-[4px]">Chamber Member Name</span>
+                        <p class="text-xs text-indigo-900/80 font-mono mt-0.5">{{ lead.title|default:"Executive Director" }}</p>
+                    </div>
+                    <div class="text-right font-mono text-xs text-slate-400 select-none blur-[4.5px]">
+                        s*******@{{ city_or_region|slugify }}chamber.org
+                    </div>
+                </div>
+                {% empty %}
+                <div class="py-3 text-center text-slate-400 font-mono text-xs">
+                    Assembling localized contact matrices... Preview ready instantly upon completion.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="pt-2 text-center">
+            <a href="{% url 'create_checkout_session' request_id=request_id %}?type=custom" 
+               class="inline-block w-full bg-[#1a2a6c] hover:bg-[#2a3b8c] text-white font-mono font-bold uppercase tracking-wider py-4 px-10 rounded-xl shadow-md transition duration-150 transform hover:-translate-y-0.5 text-center text-sm">
+                🔓 Unlock Full Dataset for {{ cost_string }}
+            </a>
+            <p class="text-[11px] text-slate-400 font-mono mt-2.5">Secure payment processing managed by Stripe. Instant dashboard delivery verification.</p>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -193,8 +204,8 @@
     const consoleBox = document.getElementById("console-logs");
     const statusDisplay = document.getElementById("status-display");
     const counterDisplay = document.getElementById("counter-display");
-    const reassuranceNotice = document.getElementById("reassurance-notice");
-    const portalBtn = document.getElementById("portal-btn");
+    const clientCompletionDeck = document.getElementById("clientCompletionDeck");
+    const clientFailureDeck = document.getElementById("clientFailureDeck");
 
     function pollPipelineTelemetry() {
         fetch(`/workspace/monitor/api/${requestId}/`)
@@ -204,68 +215,60 @@
                 consoleBox.textContent = data.logs || "Awaiting thread dispatch logs...";
                 consoleBox.scrollTop = consoleBox.scrollHeight; 
 
-                // Render live high-fidelity lead target count parsed from DB filter strings
+                // Render live lead target count parsed from DB filter strings
                 counterDisplay.textContent = data.leads_count || "0";
 
                 const currentStatus = String(data.status).toLowerCase();
 
-                // Clear any leftover manual style overrides from alternate conditional blocks
+                // Clear manual style overrides from alternate conditional blocks
                 statusDisplay.style.backgroundColor = "";
                 statusDisplay.style.color = "";
 
-                // 🧪 TEST MODE INTERCEPTOR: If status is completed but we found 0 leads, force the error layout!
-                if (currentStatus === 'completed' && (data.leads_count === 0 || data.leads_count === "0")) {
-                    statusDisplay.className = "status-badge";
-                    statusDisplay.style.backgroundColor = "#fff5f5";
-                    statusDisplay.style.color = "#c53030";
-                    statusDisplay.textContent = "INTERRUPTED ⚠️";
+                // 💡 TRY BEFORE YOU BUY ROUTER SYSTEM
+                if (currentStatus === 'completed') {
+                    const count = parseInt(data.leads_count) || 0;
                     
-                    // Keep the reassurance box permanently locked on the screen
-                    reassuranceNotice.style.display = "block"; 
-                    
-                    // Keep the portal button visible so they can click back to their dashboard safely
-                    portalBtn.style.display = "block"; 
-                    
-                    console.log("[TEST MODE]: 0 leads found on completion. Forcing reassurance layout visibility.");
-                } 
-                // --- NORMAL PRODUCTION EVALUATION SEQUENCES ---
-                else if (currentStatus === 'completed') {
-                    statusDisplay.className = "status-badge status-completed";
-                    statusDisplay.textContent = "Data Ready 🚀";
-                    reassuranceNotice.style.display = "none";
-                    portalBtn.style.display = "block";
+                    if (count > 0) {
+                        statusDisplay.className = "status-badge status-completed";
+                        statusDisplay.textContent = "Data Ready 🚀";
+                        clientCompletionDeck.classList.remove('hidden');
+                        clientFailureDeck.classList.add('hidden');
+                    } else {
+                        // The scraper finished but hit zero real people (junk department mailboxes)
+                        statusDisplay.className = "status-badge";
+                        statusDisplay.style.backgroundColor = "#fff5f5";
+                        statusDisplay.style.color = "#c53030";
+                        statusDisplay.textContent = "INTERRUPTED ⚠️";
+                        clientFailureDeck.classList.remove('hidden');
+                        clientCompletionDeck.classList.add('hidden');
+                    }
                 } else if (currentStatus === 'error' || currentStatus === 'interrupted') {
                     statusDisplay.className = "status-badge";
                     statusDisplay.style.backgroundColor = "#fff5f5";
                     statusDisplay.style.color = "#c53030";
                     statusDisplay.textContent = "INTERRUPTED ⚠️";
-                    reassuranceNotice.style.display = "block";
-                    portalBtn.style.display = "none";
+                    clientFailureDeck.classList.remove('hidden');
+                    clientCompletionDeck.classList.add('hidden');
                 } else {
-                    // Caters to 'scraping' or 'pending' loop tracks safely
+                    // Caters to 'scraping' or 'pending' active execution layers
                     statusDisplay.className = "status-badge status-scraping";
                     statusDisplay.textContent = "Mining Workspace Live ⚡";
-                    reassuranceNotice.style.display = "none";
-                    portalBtn.style.display = "none";
+                    clientCompletionDeck.classList.add('hidden');
+                    clientFailureDeck.classList.add('hidden');
                 }
 
-                // Keep loop open long enough to render changes on final cycle
-                if (currentStatus === 'scraping' || currentStatus === 'pending' || currentStatus === 'initializing' || currentStatus === 'completed') {
-                    // Only continue looping if it hasn't completed or errored out completely
-                    if (currentStatus !== 'completed' && currentStatus !== 'error' && currentStatus !== 'interrupted') {
-                        setTimeout(pollPipelineTelemetry, 1500);
-                    }
+                // Loop management condition controls
+                if (currentStatus === 'scraping' || currentStatus === 'pending' || currentStatus === 'initializing') {
+                    setTimeout(pollPipelineTelemetry, 1500);
                 }
             })
             .catch(err => {
                 console.error("Telemetry channel interrupted:", err);
-                // Fail-safe protection reveal
-                reassuranceNotice.style.display = "block";
                 setTimeout(pollPipelineTelemetry, 3000);
             });
     }
 
-    // Initialize telemetry pipeline polling mapping sequence
+    // Initialize telemetry loop mapping sequence
     pollPipelineTelemetry();
 </script>
 

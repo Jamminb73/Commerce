@@ -37,7 +37,7 @@ def landing_page(request):
 def request_custom_scrape(request):
     """
     Processes user requests for a custom scrape.
-    Intercepts pre-existing database regions to bypass delays and route directly to instant purchase.
+    Kicks off the scraper engine immediately for value-first previews.
     """
     if request.method == 'POST':
         form = ChamberRequestForm(request.POST)
@@ -66,14 +66,30 @@ def request_custom_scrape(request):
             if request.user.is_authenticated and not chamber_request.user_email:
                 chamber_request.user_email = request.user.email
                 
+            # Set initial processing parameters for risk-free deployment
+            chamber_request.status = 'scraping'
+            chamber_request.console_logs = "📡 [SYSTEM]: Initializing risk-free preview data capture sequence...\n"
             chamber_request.save()
             
+            # 🚀 IGNITE BACKGROUND SCRAPER IMMEDIATELY (FREE INITIAL ENTRY)
+            threading.Thread(
+                target=run_background_scrape,
+                args=(
+                    chamber_request.id, 
+                    chamber_request.chamber_url, 
+                    chamber_request.chamber_name,
+                    chamber_request.city_or_region,
+                    chamber_request.state
+                ),
+                daemon=True
+            ).start()
+
             # Automated Admin Notification Email Dispatch
             try:
-                subject = f"[Scrape Request] New Order Tier Level: {price_string}"
+                subject = f"[Live Preview Request] Target Location Tier: {price_string}"
                 message = (
-                    f"New client dataset pipeline submission alert!\n\n"
-                    f"Plan Selection: {price_string} ({qty} Target Locations)\n"
+                    f"A user has initiated an on-demand data preview generation loop!\n\n"
+                    f"Projected Unlock Tier: {price_string} ({qty} Locations)\n"
                     f"Target Chamber Name: {chamber_request.chamber_name}\n"
                     f"URL Provided:\n{chamber_request.chamber_url}\n\n"
                     f"Client Email Contact: {chamber_request.user_email}\n"
@@ -88,12 +104,9 @@ def request_custom_scrape(request):
 
             messages.success(
                 request, 
-                "Your custom scrape request has been logged! Redirecting to secure checkout..."
+                "Discovery Engine activated! Analyzing your target market in real time..."
             )
-            
-            # 💡 SAFE ROUTING FIX: Utilizing reverse matching to ensure trailing slashes play nice with URL parameters
-            checkout_url = reverse('create_checkout_session', kwargs={'request_id': chamber_request.id})
-            return redirect(f"{checkout_url}?type=custom")
+            return redirect('customer_monitor_view', request_id=chamber_request.id)
     else:
         initial_data = {}
         if request.user.is_authenticated:
@@ -237,7 +250,6 @@ def leads_list(request):
 
 def purchase_directory(request, request_id=0):
     """Renders the single dynamic catalog checkout menu view platform."""
-    # Query all active inventory database sets alphabetically
     active_directories = ChamberDirectory.objects.filter(is_active=True).order_by('name')
     
     context = {
@@ -360,7 +372,6 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
 
-            # --- STANDARD CUSTOMER BILLING LOOP ---
             quantity = int(scrape_request.chambers_count or 1)
             package_name = f"Premium Custom Chamber Dataset Extraction ({quantity} Locations)"
             package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}."
@@ -379,8 +390,8 @@ def create_checkout_session(request, request_id):
                 is_paid=False
             )
             
-            # 💡 THE PORTAL SUCCESS ROUTE: Send them to the customer tracking room post-checkout
-            success_url = request.build_absolute_uri(f'/workspace/monitor/{scrape_request.id}/')
+            # 💡 REDIRECT HOME TO PRISTINE LEADS LIST: Webhook will dynamically attach directory maps
+            success_url = request.build_absolute_uri('/payment-success/')
             metadata = {
                 'purchase_type': 'custom_scrape',
                 'scrape_request_id': scrape_request.id,
@@ -448,14 +459,12 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
     """Worker function that runs your Playwright script safely inside a background thread context."""
     scraper = ScraperCommand()
     
-    # Text-appender that streams lines directly into the database field for JS polling
     def log_to_database(text_line):
         req = ChamberRequest.objects.get(id=request_id)
         req.console_logs += f"{text_line}\n"
         req.save()
-        print(text_line)  # Retains your normal terminal printing execution
+        print(text_line)  
 
-    # Intercept Playwright's stdout channels to wire it to our log framework
     scraper.stdout.write = log_to_database
     scraper.style.SUCCESS = lambda text: text
     scraper.style.WARNING = lambda text: text
@@ -464,14 +473,12 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
     try:
         log_to_database("📡 [SYSTEM CORE]: Booting asynchronous worker thread pipeline...")
         
-        # 🔄 MULTI-CITY PARSER ENGINE: Break down the comma-separated text into clean individual city strings
         cities = [c.strip() for c in city_string.split(',') if c.strip()]
         log_to_database(f"🗺️ [SYSTEM CORE]: Target batch coordinates parsed: {len(cities)} location nodes found ({', '.join(cities)}).")
 
         for idx, current_city in enumerate(cities, start=1):
             log_to_database(f"\n📍 [NODE {idx}/{len(cities)}]: Initiating data pipeline sweep for {current_city}, {state.upper()}...")
             
-            # Build specific naming tokens based on the active target loop element
             derived_chamber_name = f"{current_city} Chamber of Commerce"
             derived_fallback_url = f"https://www.google.com/search?q={current_city.replace(' ', '+')}+{state}+chamber+of+commerce"
             
@@ -487,15 +494,12 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                 }
             )
             
-            # 🚀 WORKER EXECUTION TRIGGER: Hand parameters over to our newly refactored discovery layer handler
             scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
             
             if idx < len(cities):
-                # ⏳ ANTIBOT THROTTLE INTERVAL: Pausing pipeline threads to safeguard system identity layers
                 log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
                 time.sleep(random.uniform(3.0, 5.0))
         
-        # Complete state handshake
         req = ChamberRequest.objects.get(id=request_id)
         req.status = 'completed'
         req.save()
@@ -516,13 +520,11 @@ def purchase_view(request):
     if request.method == 'POST':
         chamber_request = ChamberRequest()
         
-        # Pull your custom HTML input names directly out of the POST query dict
         chamber_request.state = request.POST.get('state_focus', '').strip()
         chamber_request.city_or_region = request.POST.get('region_name', '').strip()
         chamber_request.chamber_name = request.POST.get('chamber_name', '').strip()
         chamber_request.chamber_url = request.POST.get('target_url', '').strip()
         
-        # Set system operational values for backend console tracking
         chamber_request.status = 'scraping'
         chamber_request.chambers_count = '1'
         chamber_request.estimated_cost = 0.00
@@ -531,10 +533,8 @@ def purchase_view(request):
         if request.user.is_authenticated:
             chamber_request.user_email = request.user.email
             
-        # Commit directly to your PostgreSQL backend!
         chamber_request.save()
         
-        # Fire off the worker script inside a background thread so the browser jumps to the terminal view instantly
         threading.Thread(
             target=run_background_scrape,
             args=(
@@ -547,7 +547,6 @@ def purchase_view(request):
             daemon=True
         ).start()
         
-        # Redirect over to your active log monitoring cockpit view!
         return redirect(f'/purchase/monitor/{chamber_request.id}/')
 
     context = {
@@ -580,12 +579,16 @@ def monitor_scrape_api(request, request_id):
 
 @login_required
 def customer_monitor_view(request, request_id):
-    """🎨 Renders the crisp, custom-branded telemetry monitor template built for regular users."""
+    """🎨 Renders the custom telemetry monitor template built for regular users with partial leads context."""
     scrape_request = get_object_or_404(ChamberRequest, id=request_id)
     
-    # Platform Protection Layer: Prevent clients from crossing over to look at other users' background runs
     if scrape_request.user_email != request.user.email and not request.user.is_staff:
         return redirect('leads_list')
+        
+    # Grab the partial leads generated by this run to display as blurred hooks
+    preview_leads = ChamberLead.objects.filter(
+        organization__icontains=scrape_request.city_or_region
+    )[:5]  # Limit to 5 rows to provide proof-of-work value
         
     context = {
         'request_id': request_id,
@@ -593,6 +596,9 @@ def customer_monitor_view(request, request_id):
         'state_focus': scrape_request.state,
         'is_authenticated_user': request.user.is_authenticated,
         'username': request.user.username,
+        'scrape_request': scrape_request,
+        'preview_leads': preview_leads,
+        'cost_string': f"${scrape_request.estimated_cost:.2f}",
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if hasattr(request.user, 'profile') else None
     }
     return render(request, 'leads/customer_purchase.html', context)
@@ -603,7 +609,7 @@ def customer_monitor_api(request, request_id):
     """API gateway mapping specific client-safe counts and log parameters directly to front-end JSON tickers."""
     req = get_object_or_404(ChamberRequest, id=request_id)
     
-    # Programmatic live counter evaluation matching records created for this location string
+    # Live count evaluation matching records created for this location string
     leads_found = ChamberLead.objects.filter(organization__icontains=req.city_or_region).count()
     
     return JsonResponse({
@@ -677,21 +683,28 @@ def stripe_webhook(request):
                 if scrape_request_id:
                     scrape_request = ChamberRequest.objects.filter(id=scrape_request_id).first()
                     if scrape_request:
-                        scrape_request.status = 'scraping'
-                        scrape_request.save()
+                        # 💡 TRY BEFORE YOU BUY WEBHOOK FULLFILLMENT:
+                        # Locate or generate the active ChamberDirectory element so the workspace permissions map open cleanly
+                        target_directory, _ = ChamberDirectory.objects.get_or_create(
+                            city_or_region__iexact=scrape_request.city_or_region,
+                            state__iexact=scrape_request.state,
+                            defaults={
+                                'name': f"{scrape_request.city_or_region} Chamber of Commerce",
+                                'state': scrape_request.state.upper(),
+                                'city_or_region': scrape_request.city_or_region,
+                                'is_active': True
+                            }
+                        )
                         
-                        # 🚀 ON-DEMAND WEBHOOK FALLBACK TRIGGER: Sparks async worker loop if admin was not the author
-                        threading.Thread(
-                            target=run_background_scrape,
-                            args=(
-                                scrape_request.id, 
-                                scrape_request.chamber_url, 
-                                scrape_request.chamber_name,
-                                scrape_request.city_or_region,
-                                scrape_request.state
-                            ),
-                            daemon=True
-                        ).start()
+                        # Authorize the purchasing account to view this unlocked directory
+                        UserPurchase.objects.get_or_create(
+                            user=user_obj,
+                            directory=target_directory,
+                            defaults={'stripe_session_id': session_dict.get('id')}
+                        )
+                        
+                        # Propagate the directory link back down to the raw leads table to unmask the teaser rows
+                        ChamberLead.objects.filter(organization__icontains=scrape_request.city_or_region).update(directory=target_directory)
                         
         except User.DoesNotExist:
             pass
@@ -744,7 +757,6 @@ def export_leads_csv(request):
             is_staff_or_admin
         )
 
-        # 💡 DYNAMIC WORKSPACE EXPORT EXCLUSION: If they have purchases, only export things they bought
         if not has_access and has_any_purchases:
             continue
 

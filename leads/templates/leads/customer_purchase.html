@@ -36,8 +36,9 @@
 
         header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 20px;
             margin-bottom: 25px;
@@ -58,6 +59,7 @@
             font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: inline-block;
         }
 
         .status-scraping {
@@ -69,6 +71,36 @@
         .status-completed {
             background-color: #c6f6d5;
             color: #22543d;
+        }
+
+        /* Nav layout next to badge */
+        .inline-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 6px;
+        }
+
+        .btn-browse-catalog {
+            background: #ffffff;
+            color: #2b6cb0;
+            border: 1px solid #cbd5e0;
+            padding: 5px 14px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .btn-browse-catalog:hover {
+            background: #2b6cb0;
+            color: #ffffff;
+            border-color: #2b6cb0;
         }
 
         .grid-layout {
@@ -148,6 +180,11 @@
     <header>
         <h1>Workspace Pipeline: {{ city_or_region|title }}</h1>
         <div id="status-display" class="status-badge status-scraping">Initializing</div>
+        
+        <div class="inline-nav">
+            <a href="{% url 'home' %}" class="btn-browse-catalog">🏠 Home</a>
+            <a href="{% url 'leads_list' %}" class="btn-browse-catalog">📋 Leads Page</a>
+        </div>
     </header>
 
     <div class="grid-layout">
@@ -251,7 +288,6 @@
                         statusDisplay.style.color = "#c53030";
                         statusDisplay.textContent = "EMPTY DATASET ⚠️";
                         
-                        // 🚀 REVEALS TERMINAL DECK WINDOW FOR EMPTY SWEEPS
                         clientFailureDeck.classList.remove('hidden');
                         clientCompletionDeck.classList.add('hidden');
                     }

@@ -377,6 +377,12 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
 
+            # 🛡️ ANTI-BUM CHECKOUT GUARDRAIL: Prevent checkouts on empty datasets
+            leads_found = ChamberLead.objects.filter(organization__icontains=scrape_request.city_or_region).count()
+            if leads_found == 0:
+                messages.error(request, "Checkout locked: No verifiable, high-fidelity contact nodes found for this region.")
+                return redirect('customer_monitor_view', request_id=scrape_request.id)
+
             quantity = int(scrape_request.chambers_count or 1)
             package_name = f"Premium Custom Chamber Dataset Extraction ({quantity} Locations)"
             package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}."
@@ -595,6 +601,9 @@ def customer_monitor_view(request, request_id):
         organization__icontains=scrape_request.city_or_region
     )[:5]  # Limit to 5 rows to provide proof-of-work value
         
+    # Evaluate total high-fidelity records cleanly for the template conditions
+    leads_count = ChamberLead.objects.filter(organization__icontains=scrape_request.city_or_region).count()
+
     context = {
         'request_id': request_id,
         'city_or_region': scrape_request.city_or_region,
@@ -603,6 +612,7 @@ def customer_monitor_view(request, request_id):
         'username': request.user.username,
         'scrape_request': scrape_request,
         'preview_leads': preview_leads,
+        'leads_count': leads_count,  # 💡 Added count tracking context variable
         'cost_string': f"${scrape_request.estimated_cost:.2f}",
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if hasattr(request.user, 'profile') else None
     }

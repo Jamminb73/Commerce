@@ -113,6 +113,16 @@
         </div>
     </header>
 
+    {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl text-sm border {% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-900{% elif message.tags == 'info' %}bg-amber-50 border-amber-200 text-amber-900{% else %}bg-green-50 border-green-200 text-green-900{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <div class="mb-8 border-b border-slate-200 pb-6">
         <p class="text-sm text-slate-500 mt-2">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
     </div>
@@ -215,7 +225,7 @@
         <div class="pt-4 border-t border-slate-200">
             <button type="submit" id="clientSubmitBtn" disabled
                     class="w-full bg-slate-200 text-slate-400 font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm cursor-not-allowed transition duration-150">
-                Fill Required Target Locations to Activate Checkout
+                Provide a Region (Min. 3 characters) to Activate Checkout
             </button>
         </div>
     </form>
@@ -232,13 +242,13 @@
 
         const currentCityTrimmed = cityInput.value.trim().toLowerCase();
         const isStateSelected = stateSelect && stateSelect.value !== "";
-        const isCityFilled = currentCityTrimmed !== "";
+        // 🛡️ Client guardrail: Block search parameters shorter than 3 characters
+        const isCityValidLength = currentCityTrimmed.length >= 3;
 
-        if (isStateSelected && isCityFilled) {
+        if (isStateSelected && isCityValidLength) {
             submitBtn.disabled = false;
             
-            // 💡 FORCES EMPTY CHECKS TO PREVENT ACCIDENTAL UNLOCK DECK RENDERS
-            if (currentCityTrimmed !== "" && catalogedCities.includes(currentCityTrimmed)) {
+            if (catalogedCities.includes(currentCityTrimmed)) {
                 submitBtn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5 active:translate-y-0";
                 submitBtn.innerText = "⚡ Instant Catalog Unlock Confirmed: Access Database ($9.99)";
             } else {
@@ -252,7 +262,12 @@
         } else {
             submitBtn.disabled = true;
             submitBtn.className = "w-full bg-slate-200 text-slate-400 font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm cursor-not-allowed";
-            submitBtn.innerText = "Fill Required Target Locations to Activate Checkout";
+            
+            if (currentCityTrimmed.length > 0 && currentCityTrimmed.length < 3) {
+                submitBtn.innerText = "Region string too short (Minimum 3 characters)";
+            } else {
+                submitBtn.innerText = "Fill Required Target Locations to Activate Checkout";
+            }
         }
     }
 

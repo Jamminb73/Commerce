@@ -80,7 +80,7 @@
         <div class="nav-container">
             {% if is_authenticated_user %}
                 <div class="profile-dropdown">
-                    <button class="dropdown-trigger" onclick="toggleDropdown(event)">
+                    <button class="dropdown-trigger" onclick="toggleDropdown(event)" type="button" aria-haspopup="true" aria-expanded="false">
                         {% if avatar_url %}
                             <img src="{{ avatar_url }}" alt="Profile" class="nav-avatar">
                         {% else %}
@@ -137,13 +137,13 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Contact Email Address</label>
+                <label for="clientEmail" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Contact Email Address</label>
                 <input type="email" name="user_email" id="clientEmail" required value="{{ user_email }}"
                        class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] transition">
             </div>
 
             <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Number of Target Territories</label>
+                <label for="clientBatchSize" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Number of Target Territories</label>
                 <select name="chambers_count" id="clientBatchSize" required onchange="evaluateClientButton()"
                         class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] cursor-pointer transition">
                     <option value="1">1 Target Location ($8.00)</option>
@@ -157,7 +157,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="md:col-span-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">State Focus</label>
+                <label for="clientStateSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">State Focus</label>
                 <select name="state" id="clientStateSelect" required onchange="evaluateClientButton()"
                         class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] cursor-pointer transition">
                     <option value="">Select a State...</option>
@@ -215,7 +215,7 @@
             </div>
 
             <div class="md:col-span-2">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">City or Territory Regions</label>
+                <label for="clientCityInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">City or Territory Regions</label>
                 <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="" autocomplete="off"
                        oninput="evaluateClientButton()"
                        class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-[#1a2a6c] transition">
@@ -231,8 +231,11 @@
     </form>
 </div>
 
+{{ active_cities_json|json_script:"cataloged-cities-data" }}
+
 <script>
-    const catalogedCities = {{ active_cities_json|default:"[]"|safe }};
+    // Safely pull context from the tracking node block to make VS Code happy
+    const catalogedCities = JSON.parse(document.getElementById('cataloged-cities-data').textContent || "[]");
 
     function evaluateClientButton() {
         const cityInput = document.getElementById("clientCityInput");
@@ -242,7 +245,6 @@
 
         const currentCityTrimmed = cityInput.value.trim().toLowerCase();
         const isStateSelected = stateSelect && stateSelect.value !== "";
-        // 🛡️ Client guardrail: Block search parameters shorter than 3 characters
         const isCityValidLength = currentCityTrimmed.length >= 3;
 
         if (isStateSelected && isCityValidLength) {

@@ -108,7 +108,6 @@
             background-color: #ffffff;
         }
 
-        /* Styling for our new dynamic city input boxes */
         .dynamic-city-wrapper {
             display: flex;
             flex-direction: column;
@@ -147,7 +146,6 @@
             margin-top: 10px;
         }
 
-        /* Disabled State Rules */
         .btn-disabled {
             background: #cbd5e0 !important;
             color: #718096 !important;
@@ -156,7 +154,6 @@
             transform: none !important;
         }
 
-        /* Active State Rules */
         .btn-active {
             background: linear-gradient(135deg, #38a169 0%, #2f855a 100%) !important;
             box-shadow: 0 4px 14px rgba(56, 161, 105, 0.3);
@@ -299,7 +296,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{% url 'request_custom_scrape' %}" onsubmit="return bundleCityFieldsBeforeSubmit()">
+    <form id="customScrapeForm" method="POST" action="{% url 'request_custom_scrape' %}" novalidate>
         {% csrf_token %}
         
         {% if form.errors %}
@@ -384,6 +381,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const dynamicCityLabel = document.getElementById("dynamic-city-label");
     const locationRowContainer = document.getElementById("location-row-container");
     const cityGroupBox = document.getElementById("city-group-box");
+    const scrapeForm = document.getElementById("customScrapeForm");
     
     let cachedCities = [];
 
@@ -407,17 +405,14 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // Trigger Instant Catalogue notice alerts dynamically
         if (customInputs.length === 1 && anyMatchFound) {
             alertBox.style.display = "block";
         } else {
             alertBox.style.display = "none";
         }
 
-        // Validate state dropdown selection too
         const stateSelected = stateSelect && stateSelect.value !== "";
 
-        // Enforce Button Guardrail Status
         if (allFilled && customInputs.length > 0 && stateSelected) {
             submitBtn.disabled = false;
             submitBtn.classList.remove("btn-disabled");
@@ -426,7 +421,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const qty = parseInt(quantitySelect.value) || 1;
             let currentCost = qty * 8;
             if (qty === 5) currentCost = 32;
-            submitBtn.textContent = `Submit & Go to Secure Checkout ($${currentCost}.00)`;
+            submitBtn.textContent = `Submit Request ($${currentCost}.00)`;
         } else {
             submitBtn.disabled = true;
             submitBtn.classList.remove("btn-active");
@@ -437,9 +432,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function renderDynamicFieldsLayout() {
         const qty = parseInt(quantitySelect.value) || 1;
-        dynamicInputsContainer.innerHTML = ""; // Empty container
+        dynamicInputsContainer.innerHTML = ""; 
 
-        // Grid system formatting adjustments for layout proportions
         if (qty > 1) {
             locationRowContainer.style.display = "flex";
             locationRowContainer.style.flexDirection = "column";
@@ -452,13 +446,12 @@ document.addEventListener("DOMContentLoaded", function() {
             dynamicCityLabel.textContent = "City or Territory Regions";
         }
 
-        // Spawn precise input box layers
         for (let i = 1; i <= qty; i++) {
             const input = document.createElement("input");
             input.type = "text";
-            input.required = true;
-            input.className = "dynamic-city-target";
-            input.placeholder = `Location Target Box #${i} (e.g., San Diego)`;
+            input.required = false; // 🛠️ FIXED: Removed dynamic requirement loops to clear the browser error icon completely
+            input.className = "dynamic-city-target dynamic-city-input";
+            input.placeholder = `Location Target Box #${i} (e.g., Denver)`;
             input.addEventListener("input", syncAndCheckFulfillment);
             dynamicInputsContainer.appendChild(input);
         }
@@ -466,28 +459,30 @@ document.addEventListener("DOMContentLoaded", function() {
         syncAndCheckFulfillment();
     }
 
+    if (scrapeForm) {
+        scrapeForm.addEventListener("submit", function(e) {
+            const customInputs = document.querySelectorAll(".dynamic-city-target");
+            const finalValues = [];
+            
+            customInputs.forEach(input => {
+                if (input.value.trim()) finalValues.push(input.value.trim());
+            });
+
+            if (hiddenNativeCityInput) {
+                hiddenNativeCityInput.value = finalValues.join(", ");
+                console.log("Stamping data bucket payload:", hiddenNativeCityInput.value);
+            }
+        });
+    }
+
     if (quantitySelect && stateSelect) {
         quantitySelect.addEventListener("change", renderDynamicFieldsLayout);
         stateSelect.addEventListener("change", syncAndCheckFulfillment);
-        renderDynamicFieldsLayout(); // Initial runtime setup
+        renderDynamicFieldsLayout(); 
     }
 });
+</script>
 
-function bundleCityFieldsBeforeSubmit() {
-    const customInputs = document.querySelectorAll(".dynamic-city-target");
-    const finalValues = [];
-    
-    customInputs.forEach(input => {
-        if (input.value.trim()) finalValues.push(input.value.trim());
-    });
-
-    // Compress values into a single string line and feed it directly to Django's matching backend form target field
-    const hiddenNativeField = document.getElementById("id_city_or_region");
-    if (hiddenNativeField) {
-        hiddenNativeField.value = finalValues.join(", ");
-    }
-    return true;
-}
 </script>
 
 </body>

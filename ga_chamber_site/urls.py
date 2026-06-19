@@ -1,3 +1,4 @@
+# urls.py
 from django.contrib import admin
 from django.urls import path, include  
 from django.contrib.sitemaps.views import sitemap  
@@ -6,13 +7,13 @@ from leads.sitemaps import StaticViewSitemap
 from leads.views import (
     landing_page,
     leads_list,       
-    purchase_directory,             # <-- Imported the new dropdown checkout view
+    purchase_directory,             
     register_view,
     login_view,
     logout_view,             
     purchase_view,
-    monitor_view,                   # <-- Imported your new live terminal log view
-    monitor_scrape_api,             # <-- Imported your new live log JSON api endpoint
+    monitor_view,                   
+    monitor_scrape_api,             
     create_checkout_session,
     payment_success_view,
     payment_cancel_view,     
@@ -20,8 +21,10 @@ from leads.views import (
     request_custom_scrape,          
     request_success_view,           
     export_leads_csv,               
-    active_directories_api,         # <-- Added the hidden live city lookup API endpoint
-    about_page,                     # <-- Imported the new about view function
+    active_directories_api,         
+    about_page,                     
+    customer_monitor_view,          # 💡 FIXED: Imported your new user-facing telemetry view
+    customer_monitor_api            # 💡 FIXED: Imported your new user-facing JSON API view
 )
 
 # Dictionary mapping for the sitemap framework
@@ -41,7 +44,7 @@ urlpatterns = [
     # Core Application Routes
     path('admin/', admin.site.urls),
     path('', landing_page, name='home'),
-    path('about/', about_page, name='about_page'), # <-- Registered the path for the new About page
+    path('about/', about_page, name='about_page'), 
     path('leads/', leads_list, name='leads_list'),  
     path('leads/export/', export_leads_csv, name='export_leads_csv'),  
     
@@ -50,7 +53,7 @@ urlpatterns = [
     path('purchase-directory/<int:request_id>/', purchase_directory, name='purchase_directory'),
     
     # Hidden API Routing Layer
-    path('api/active-cities/', active_directories_api, name='active_cities_api'),  # <-- Registered the city list query route
+    path('api/active-cities/', active_directories_api, name='active_cities_api'),  
     
     # Custom Dynamic Scraping Requests System
     path('request-scrape/', request_custom_scrape, name='request_custom_scrape'),
@@ -59,19 +62,19 @@ urlpatterns = [
     # Secure Backend Blog App Router
     path('blog/', include('blog.urls')), 
     
-    # Stripe Checkout & Payment Flows (Updated with dynamic request_id parameter)
+    # Stripe Checkout & Payment Flows
     path('purchase/', purchase_view, name='purchase'),
-    
-    # Live Pipeline Console Monitoring Deck 
-    path('purchase/monitor/<int:request_id>/', monitor_view, name='monitor_view'),
-    path('purchase/monitor/api/<int:request_id>/', monitor_scrape_api, name='monitor_scrape_api'),
-    
     path('create-checkout-session/<int:request_id>/', create_checkout_session, name='create_checkout_session'),
     path('payment-success/', payment_success_view, name='payment_success'),
     path('payment-cancel/', payment_cancel_view, name='payment_cancel'),
     
-    # Stripe Billing/Cancellation Management Portal
-    #path('account/manage/', stripe_customer_portal, name='stripe_customer_portal'),  
+    # TRACK 1: Admin Telemetry & Manual Scraping Terminal Logs
+    path('purchase/monitor/<int:request_id>/', monitor_view, name='monitor_view'),
+    path('purchase/monitor/api/<int:request_id>/', monitor_scrape_api, name='monitor_scrape_api'),
+    
+    # TRACK 2: Client Workspace Branded Telemetry Tickers
+    path('workspace/monitor/<int:request_id>/', customer_monitor_view, name='customer_monitor_view'),
+    path('workspace/monitor/api/<int:request_id>/', customer_monitor_api, name='customer_monitor_api'),
     
     # Unified Webhook Receiver (Matches your stripe listen routing target)
     path('webhook/', stripe_webhook, name='stripe_webhook'),

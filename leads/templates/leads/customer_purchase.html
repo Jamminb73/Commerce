@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extraction Workspace | ChamberPipeline Telemetry</title>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --accent-color: #f39c12;
+            --text-dark: #2d3748;
+            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        header h1 {
+            color: var(--primary-bg);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .status-badge {
+            background-color: #feebc8;
+            color: #c05621;
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-scraping {
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed {
+            background-color: #c6f6d5;
+            color: #22543d;
+        }
+
+        .ticker-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .ticker-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .ticker-val {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-bg);
+            margin-bottom: 5px;
+        }
+
+        .ticker-label {
+            font-size: 0.9rem;
+            color: #718096;
+            font-weight: 600;
+        }
+
+        .console-box {
+            background-color: #1a202c;
+            color: #a0aec0;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            border-radius: 10px;
+            height: 260px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            border: 1px solid #2d3748;
+            margin-bottom: 25px;
+        }
+
+        .reassurance-box {
+            display: none;
+            background-color: rgba(43, 108, 176, 0.05);
+            border: 1px solid #2b6cb0;
+            border-left: 5px solid #2b6cb0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-sizing: border-box;
+            color: #2d3748;
+            line-height: 1.5;
+        }
+
+        .btn-leads-portal {
+            display: none; /* Safely remains hidden until backend marks 'completed' */
+            width: 100%;
+            text-align: center;
+            background-color: transparent;
+            color: var(--primary-bg);
+            border: 2px solid var(--primary-bg);
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-sizing: border-box;
+            transition: background-color 0.2s, color 0.2s, transform 0.1s;
+        }
+
+        .btn-leads-portal:hover {
+            background-color: var(--primary-bg);
+            color: #ffffff;
+        }
+
+        .btn-leads-portal:active {
+            transform: scale(0.99);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="reassurance-notice" class="reassurance-box" style="display: block;">
+        <strong style="color: #2b6cb0; font-size: 1.05rem; display: block; margin-bottom: 6px;">💼 Transaction Secured & Order Logged</strong>
+        Your data extraction package parameters have been permanently verified and saved to your client workspace profile. Our backend engine hit an unexpected routing layout anomaly while navigating this specific directory stack, but your checkout fulfillment window is locked in. Our development operations team has been automatically notified to manually clean the regional data tables. Your completed directories will update automatically right on your dashboard!
+    </div>
+
+    <header>
+        <h1>Workspace Pipeline: {{ city_or_region|title }}</h1>
+        <div id="status-display" class="status-badge status-scraping">Initializing</div>
+    </header>
+
+    <div class="ticker-grid">
+        <div class="ticker-card">
+            <div id="counter-display" class="ticker-val">0</div>
+            <div class="ticker-label">High-Fidelity Leads Compiled</div>
+        </div>
+        <div class="ticker-card">
+            <div class="ticker-val" style="color: #38a169;">$8.00</div>
+            <div class="ticker-label">Fulfillment Target Value</div>
+        </div>
+    </div>
+
+    <h3 style="color: var(--text-dark); margin-bottom: 12px;">Active Operations Log:</h3>
+    <div id="console-logs" class="console-box">Connecting to backend automation core...</div>
+
+    <a href="{% url 'leads_list' %}" id="portal-btn" class="btn-leads-portal">Go to Leads Profile Workspace →</a>
+</div>
+
+<script>
+    const requestId = "{{ request_id }}";
+    const consoleBox = document.getElementById("console-logs");
+    const statusDisplay = document.getElementById("status-display");
+    const counterDisplay = document.getElementById("counter-display");
+    const reassuranceNotice = document.getElementById("reassurance-notice");
+    const portalBtn = document.getElementById("portal-btn");
+
+    function pollPipelineTelemetry() {
+        fetch(`/workspace/monitor/api/${requestId}/`)
+            .then(res => res.json())
+            .then(data => {
+                // Render live stdout log output from database
+                consoleBox.textContent = data.logs || "Awaiting thread dispatch logs...";
+                consoleBox.scrollTop = consoleBox.scrollHeight; 
+
+                // Render live high-fidelity lead target count parsed from DB filter strings
+                counterDisplay.textContent = data.leads_count || "0";
+
+                const currentStatus = String(data.status).toLowerCase();
+
+                // Clear any leftover manual style overrides from alternate conditional blocks
+                statusDisplay.style.backgroundColor = "";
+                statusDisplay.style.color = "";
+
+                // 🧪 TEST MODE INTERCEPTOR: If status is completed but we found 0 leads, force the error layout!
+                if (currentStatus === 'completed' && (data.leads_count === 0 || data.leads_count === "0")) {
+                    statusDisplay.className = "status-badge";
+                    statusDisplay.style.backgroundColor = "#fff5f5";
+                    statusDisplay.style.color = "#c53030";
+                    statusDisplay.textContent = "INTERRUPTED ⚠️";
+                    
+                    // Keep the reassurance box permanently locked on the screen
+                    reassuranceNotice.style.display = "block"; 
+                    
+                    // Keep the portal button visible so they can click back to their dashboard safely
+                    portalBtn.style.display = "block"; 
+                    
+                    console.log("[TEST MODE]: 0 leads found on completion. Forcing reassurance layout visibility.");
+                } 
+                // --- NORMAL PRODUCTION EVALUATION SEQUENCES ---
+                else if (currentStatus === 'completed') {
+                    statusDisplay.className = "status-badge status-completed";
+                    statusDisplay.textContent = "Data Ready 🚀";
+                    reassuranceNotice.style.display = "none";
+                    portalBtn.style.display = "block";
+                } else if (currentStatus === 'error' || currentStatus === 'interrupted') {
+                    statusDisplay.className = "status-badge";
+                    statusDisplay.style.backgroundColor = "#fff5f5";
+                    statusDisplay.style.color = "#c53030";
+                    statusDisplay.textContent = "INTERRUPTED ⚠️";
+                    reassuranceNotice.style.display = "block";
+                    portalBtn.style.display = "none";
+                } else {
+                    // Caters to 'scraping' or 'pending' loop tracks safely
+                    statusDisplay.className = "status-badge status-scraping";
+                    statusDisplay.textContent = "Mining Workspace Live ⚡";
+                    reassuranceNotice.style.display = "none";
+                    portalBtn.style.display = "none";
+                }
+
+                // Keep loop open long enough to render changes on final cycle
+                if (currentStatus === 'scraping' || currentStatus === 'pending' || currentStatus === 'initializing' || currentStatus === 'completed') {
+                    // Only continue looping if it hasn't completed or errored out completely
+                    if (currentStatus !== 'completed' && currentStatus !== 'error' && currentStatus !== 'interrupted') {
+                        setTimeout(pollPipelineTelemetry, 1500);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Telemetry channel interrupted:", err);
+                // Fail-safe protection reveal
+                reassuranceNotice.style.display = "block";
+                setTimeout(pollPipelineTelemetry, 3000);
+            });
+    }
+
+    // Initialize telemetry pipeline polling mapping sequence
+    pollPipelineTelemetry();
+</script>
+
+</body>
+</html>

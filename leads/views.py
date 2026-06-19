@@ -5,6 +5,7 @@ import stripe
 import threading
 import time    # 🧭 REQUIRED: Active background thread throttle module
 import random  # 🧭 REQUIRED: Random value selector generator
+import urllib.parse
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse  # <-- Imported for secure dynamic reverse routing
@@ -315,16 +316,41 @@ def register_view(request):
 
 def create_checkout_session(request, request_id):
     """
-    Unified Stripe Checkout Engine.
-    Segregates inventory assets and custom pipelines cleanly using explicit routing arguments.
+    Unified Stripe Checkout Engine with Role-Based Routing.
+    Bypasses billing for Admins, routes regular customers straight to Stripe,
+    and handles dynamic telemetry routing parameters on successful payment.
     """
     if not request.user.is_authenticated:
         return redirect('login')
 
+    # 🛡️ ROLE-BASED OVERRIDE: If logged in as staff/admin, bypass Stripe completely & execute Track 1
+    if request.user.is_staff or request.user.is_superuser:
+        scrape_request = get_object_or_404(ChamberRequest, id=request_id)
+        scrape_request.status = 'scraping'
+        scrape_request.console_logs = "📡 [ADMIN BYPASS]: System superuser authorization confirmed. Bypassing billing gateway...\n"
+        scrape_request.save()
+        
+        # Instantly launch the background scraper thread inside local context memory
+        threading.Thread(
+            target=run_background_scrape,
+            args=(
+                scrape_request.id, 
+                scrape_request.chamber_url, 
+                scrape_request.chamber_name,
+                scrape_request.city_or_region,
+                scrape_request.state
+            ),
+            daemon=True
+        ).start()
+        
+        messages.success(request, "Admin configuration authenticated. Pipeline execution active.")
+        return redirect(f'/purchase/monitor/{scrape_request.id}/')
+
+    # --- STANDARD PRODUCTION STRIPE FLOW FOR REGULAR USERS ---
     try:
         stripe.api_key = settings.STRIPE_SECRET_KEY
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
-        checkout_type = request.GET.get('type', 'directory') # 💡 Sensor: Checks if custom type parameter exists
+        checkout_type = request.GET.get('type', 'directory')
 
         # --- ROUTE A: CUSTOM ON-DEMAND SCRAPE PIPELINE STAGE ($8.00 base) ---
         if checkout_type == 'custom':
@@ -333,15 +359,14 @@ def create_checkout_session(request, request_id):
             if scrape_request.user_email != request.user.email:
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
-                
-            # Extract target request multiplier counts safely from the record framework
+
+            # --- STANDARD CUSTOMER BILLING LOOP ---
             quantity = int(scrape_request.chambers_count or 1)
             package_name = f"Premium Custom Chamber Dataset Extraction ({quantity} Locations)"
-            package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}. Target URL: {scrape_request.chamber_url or 'Auto-Sourced Engine Target'}"
+            package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}."
             
-            # Volume Tier Multiplier Framework Engine (Buy 4, Get 1 Free Activation)
             if quantity == 5:
-                amount_in_cents = 3200  # Charged for 4, 5th one is completely free
+                amount_in_cents = 3200  # "Buy 4, Get 1 Free" Activation 
                 total_paid_float = 32.00
             else:
                 amount_in_cents = quantity * 800  
@@ -353,6 +378,9 @@ def create_checkout_session(request, request_id):
                 amount_paid=total_paid_float,
                 is_paid=False
             )
+            
+            # 💡 THE PORTAL SUCCESS ROUTE: Send them to the customer tracking room post-checkout
+            success_url = request.build_absolute_uri(f'/workspace/monitor/{scrape_request.id}/')
             metadata = {
                 'purchase_type': 'custom_scrape',
                 'scrape_request_id': scrape_request.id,
@@ -382,6 +410,7 @@ def create_checkout_session(request, request_id):
             )
             OrderItem.objects.create(order=new_order, directory=target_directory)
             
+            success_url = request.build_absolute_uri('/payment-success/')
             metadata = {
                 'purchase_type': 'directory',
                 'directory_id': target_directory.id,
@@ -406,8 +435,8 @@ def create_checkout_session(request, request_id):
             mode='payment',
             client_reference_id=request.user.id,
             metadata=metadata,
-            success_url=request.build_absolute_uri('/payment-success/'),
-            cancel_url=request.build_absolute_uri('/payment-cancel/'),
+            success_url=success_url,
+            cancel_url=request.build_absolute_uri('/request-scrape/'),
         )
         return redirect(checkout_session.url, code=303)
         
@@ -549,6 +578,41 @@ def monitor_scrape_api(request, request_id):
     })
 
 
+@login_required
+def customer_monitor_view(request, request_id):
+    """🎨 Renders the crisp, custom-branded telemetry monitor template built for regular users."""
+    scrape_request = get_object_or_404(ChamberRequest, id=request_id)
+    
+    # Platform Protection Layer: Prevent clients from crossing over to look at other users' background runs
+    if scrape_request.user_email != request.user.email and not request.user.is_staff:
+        return redirect('leads_list')
+        
+    context = {
+        'request_id': request_id,
+        'city_or_region': scrape_request.city_or_region,
+        'state_focus': scrape_request.state,
+        'is_authenticated_user': request.user.is_authenticated,
+        'username': request.user.username,
+        'avatar_url': getattr(request.user.profile, 'avatar_url', None) if hasattr(request.user, 'profile') else None
+    }
+    return render(request, 'leads/customer_purchase.html', context)
+
+
+@login_required
+def customer_monitor_api(request, request_id):
+    """API gateway mapping specific client-safe counts and log parameters directly to front-end JSON tickers."""
+    req = get_object_or_404(ChamberRequest, id=request_id)
+    
+    # Programmatic live counter evaluation matching records created for this location string
+    leads_found = ChamberLead.objects.filter(organization__icontains=req.city_or_region).count()
+    
+    return JsonResponse({
+        'status': req.status,
+        'logs': req.console_logs,
+        'leads_count': leads_found
+    })
+
+
 def payment_success_view(request):
     return render(request, 'leads/payment_success.html')
 
@@ -615,6 +679,19 @@ def stripe_webhook(request):
                     if scrape_request:
                         scrape_request.status = 'scraping'
                         scrape_request.save()
+                        
+                        # 🚀 ON-DEMAND WEBHOOK FALLBACK TRIGGER: Sparks async worker loop if admin was not the author
+                        threading.Thread(
+                            target=run_background_scrape,
+                            args=(
+                                scrape_request.id, 
+                                scrape_request.chamber_url, 
+                                scrape_request.chamber_name,
+                                scrape_request.city_or_region,
+                                scrape_request.state
+                            ),
+                            daemon=True
+                        ).start()
                         
         except User.DoesNotExist:
             pass

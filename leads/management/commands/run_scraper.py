@@ -12,70 +12,54 @@ from django.core.management.base import BaseCommand
 from playwright.sync_api import sync_playwright
 from nameparser import HumanName
 
-# 🛡️ FIXED: Absolute path import explicitly maps to your app models directory
+# 🛡️ IMPORT MATRIX MAP: Maps directly to your local application structure
 from leads.models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
 
-# 🛡️ THE HIGH-FIDELITY EXTRACTION FILTER MATRIX
+# 🛡️ REFACTORED EXTRACTION FILTER MATRIX (Removed 'board of directors' and 'foundation' blockages)
 BLACKLIST_KEYWORDS = (
     'camping', 'toll', 'road', 'download', 'pdf', 'excel', 'word', 'powerpoint',
     'trip', 'guide', 'visit', 'follow us', 'our mission', 'privacy policy', 
-    'terms of service', 'about us', 'contact us', 'newsletter', 'copyright',
-    'explore', 'vacation', 'listing', 'advertisement', 'heritage', 'gallery',
-    'board of directors', 'executive committee', 'history', 'foundation'
+    'terms of service', 'newsletter', 'copyright', 'explore', 'vacation', 
+    'listing', 'advertisement', 'heritage', 'gallery', 'history'
 )
 
-# Hard exclusion patterns for structural mailboxes
 GENERIC_BOXES = ('info@', 'support@', 'admin@', 'marketing@', 'contact@', 'webmaster@', 'help@', 'membership@', 'events@', 'join@', 'chamber@', 'frontdesk@', 'sales@')
 
-# Strict keywords to instantly identify and drop corporate entities, initiatives, or B2B program titles
 ORGANIZATION_KEYWORDS = (
     'business', 'center', 'visitor', 'council', 'service', 'chamber', 'association',
     'alliance', 'bureau', 'corporation', 'company', 'inc.', 'llc', 'group', 'dept',
-    'department', 'practices', 'committee', 'board', 'foundation', 'development',
-    'partnership', 'network', 'agency', 'institute', 'society', 'club'
+    'department', 'practices', 'committee', 'development', 'partnership', 'network', 
+    'agency', 'institute', 'society', 'club'
 )
 
 
 def is_valid_human_name(name_str):
-    """
-    Rigorously validates if a string is structured like an actual human name.
-    Uses the nameparser library coupled with strict structural guardrails.
-    """
+    """Rigorously validates if a string is structured like an actual human name."""
     if not name_str:
         return False
         
     clean_str = name_str.strip()
-    
-    # Threshold check: Names aren't tiny, massive, and don't contain emails
     if len(clean_str) < 3 or len(clean_str) > 45 or "@" in clean_str:
         return False
         
-    # Drop known layout strings instantly
     lower_str = clean_str.lower()
-    if lower_str in ['read bio', 'view profile', 'staff', 'team', 'directory', 'board', 'executive', 'members', 'home']:
+    if lower_str in ['read bio', 'view profile', 'staff', 'team', 'directory', 'members', 'home']:
         return False
         
-    # 🛡️ CATCH-ALL GATEWAY: Prevent corporate/initiative directory pollution
     if any(keyword in lower_str for keyword in ORGANIZATION_KEYWORDS):
         return False
 
-    # Check word counts: Human directory names are typically 2 to 4 words (allowing suffix credentials)
     words = clean_str.split()
     if len(words) < 2 or len(words) > 4:
         return False
         
-    # Basic character sanitization gate (allowing commas for suffix credentials)
     if not re.match(r"^[a-zA-Z\s\.\,\-\'’]+$", clean_str):
         return False
 
-    # 💎 PARSER LAYER: Let nameparser dissect the layout mechanics
     try:
         parsed = HumanName(clean_str)
-        
-        # A valid directory name must have at least a first name and a last name
         if not parsed.first or not parsed.last:
             return False
-            
     except Exception:
         return False
         
@@ -84,12 +68,9 @@ def is_valid_human_name(name_str):
 
 def parse_name(raw_name):
     """Splits full names cleanly into First and Last using nameparser properties."""
-    # Clean up trailing structural punctuation before validating
     clean_name = re.sub(r'[\s,]+(CEO|President|CPA|CCE|MBA|PC|Executive).*$', '', raw_name, flags=re.IGNORECASE).strip()
-    
     if not is_valid_human_name(clean_name):
         return "", ""
-
     parsed = HumanName(clean_name)
     return parsed.first.strip(), parsed.last.strip()
 
@@ -107,7 +88,6 @@ class Command(BaseCommand):
         custom_name = options.get('name')
         target_state = options.get('state')
 
-        # Pure in-memory dictionary payload manifestation
         session_results_manifest = {}
 
         if target_url and custom_name:
@@ -211,15 +191,16 @@ class Command(BaseCommand):
         return None
 
     def crawl_for_directory_target(self, page, base_url):
-        """🕷️ Scout Layer: Crawls internal navigation menus to jump straight to team/staff pages."""
+        """🕷️ Intent Scout Layer: Scores navigation text semantically to locate high-value rosters."""
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(3)
             
             target_page = page.evaluate('''() => {
                 let anchors = Array.from(document.querySelectorAll('a'));
-                let keywords = ['staff', 'team', 'about-us', 'directory', 'about/staff', 'about/team', 'contact-us'];
-                
+                let bestLink = null;
+                let highestScore = 0;
+
                 let isValidLink = (a) => {
                     let hrefAttr = a.getAttribute('href') || '';
                     return hrefAttr.trim() !== '' && 
@@ -229,21 +210,42 @@ class Command(BaseCommand):
                            a.href.startsWith('http');
                 };
 
-                for (let kw of keywords) {
-                    let match = anchors.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(kw) && isValidLink(a));
-                    if (match) return match.href;
+                // Semantic Priority Weights
+                let scoringMatrix = [
+                    { keywords: ['board of directors', 'board roster', 'governance'], score: 100 },
+                    { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory'], score: 90 },
+                    { keywords: ['staff', 'leadership', 'executive committee'], score: 80 },
+                    { keywords: ['directory', 'about us', 'about-us', 'contact'], score: 40 }
+                ];
+
+                for (let anchor of anchors) {
+                    if (!isValidLink(anchor)) continue;
+                    
+                    let text = (anchor.innerText || anchor.textContent || '').toLowerCase().trim();
+                    let href = (anchor.getAttribute('href') || '').toLowerCase();
+                    
+                    let currentScore = 0;
+                    
+                    // Score based on text and href attributes
+                    for (let rule of scoringMatrix) {
+                        if (rule.keywords.some(kw => text.includes(kw) || href.includes(kw))) {
+                            currentScore = Math.max(currentScore, rule.score);
+                        }
+                    }
+
+                    if (currentScore > highestScore) {
+                        highestScore = currentScore;
+                        bestLink = anchor.href;
+                    }
                 }
                 
-                for (let kw of keywords) {
-                    let match = anchors.find(a => (a.getAttribute('href') || '').toLowerCase().includes(kw) && isValidLink(a));
-                    if (match) return match.href;
-                }
-                return null;
+                return bestLink;
             }''')
+            
             if target_page:
                 return target_page
         except Exception as e:
-            self.stdout.write(f"⚠️ [SCOUT]: Navigation map scan incomplete: {e}")
+            self.stdout.write(f"⚠️ [SCOUT]: Navigation link scoring sweep hit an issue: {e}")
         return base_url
 
     def refactored_chamber_scoper(self, target_url, org_name):
@@ -271,14 +273,14 @@ class Command(BaseCommand):
                     browser.close()
                     return staged_json_payload, resolved_url
 
-            # 🎯 STAGE 1: The Navigational Pivot Rescue (Detecting Member Index Traps)
+            # 🎯 STAGE 1: Navigational Shift (Avoid member search widgets, hunt for human listings)
             if any(x in resolved_url.lower() for x in ["member-directory", "members", "directory"]):
-                self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target looks like a business roster. Running rescue to internal human coordinates..."))
+                self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target path points to business listings. Scouting leadership targets..."))
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
                     rescue_url = page.evaluate('''() => {
                         let links = Array.from(document.querySelectorAll('a'));
-                        let targets = ['staff', 'team', 'board of directors', 'board', 'leadership', 'governance', 'about us', 'about'];
+                        let targets = ['board of directors', 'board', 'staff', 'team', 'leadership', 'governance', 'about us'];
                         for (let t of targets) {
                             let found = links.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(t) && !a.href.includes('member-directory') && a.href.startsWith('http'));
                             if (found) return found.href;
@@ -287,17 +289,15 @@ class Command(BaseCommand):
                     }''')
                     if rescue_url:
                         resolved_url = rescue_url
-                        self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Shifted pipeline sweep target to: {resolved_url}"))
+                        self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Redirected search route to high-signal layout: {resolved_url}"))
                 except Exception:
                     pass
 
-            # Double-Attempt Fallback Loop Strategy
             for attempt in range(2):
                 if attempt == 1:
-                    # 🎯 STAGE 2: If previous coordinates yielded 0, fall back to structural root tree search
                     parsed_uri = urllib.parse.urlparse(resolved_url)
                     fallback_base = f"{parsed_uri.scheme}://{parsed_uri.netloc}"
-                    self.stdout.write(self.style.WARNING(f"⚠️ [ZERO YIELD FALLBACK]: Attempt 1 hit an empty layer. Rerouting scan back to base root..."))
+                    self.stdout.write(self.style.WARNING(f"⚠️ [ZERO YIELD FALLBACK]: Attempt 1 hit an empty extraction layer. Retrying root routing map..."))
                     resolved_url = self.crawl_for_directory_target(page, fallback_base)
 
                 self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")
@@ -310,7 +310,6 @@ class Command(BaseCommand):
                         page.evaluate("window.scrollBy(0, 800);")
                         time.sleep(0.4)
                     
-                    # Exact structural parsing map pulled directly from your working original script
                     extracted_leads = page.evaluate('''() => {
                         let data = [];
                         let seenEmails = new Set();
@@ -330,7 +329,7 @@ class Command(BaseCommand):
                                 
                                 let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@"];
                                 if (seenEmails.has(email) || junk.some(word => email.includes(word))) continue;
-                                seenEmails.has(email) ? null : seenEmails.add(email);
+                                seenEmails.add(email);
 
                                 let rawName = "";
                                 let rawTitle = "";
@@ -374,7 +373,7 @@ class Command(BaseCommand):
                         if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
                             continue
 
-                        if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy", "staff"]):
+                        if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy"]):
                             continue
 
                         if email in title:
@@ -391,7 +390,6 @@ class Command(BaseCommand):
                         if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile", "bio"]:
                             cleaned_title = "Chamber Executive"
 
-                        # 📦 TRANS-MEMORY ARTIFACT ASSEMBLY (Strictly No Database Operations)
                         staged_json_payload.append({
                             'first_name': first_name.strip().title(),
                             'last_name': last_name.strip().title(),
@@ -402,7 +400,7 @@ class Command(BaseCommand):
 
                     if len(staged_json_payload) > 0:
                         self.stdout.write(self.style.SUCCESS(f"   🔒 Compiled {len(staged_json_payload)} temporary lead vectors securely in-memory."))
-                        break  # Breakthrough verified, escape the fallback retry loops!
+                        break 
                     else:
                         self.stdout.write(self.style.WARNING(f"   ⚠️ Proximity extraction attempt hit 0 targets on current path."))
 

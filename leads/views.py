@@ -475,7 +475,8 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                     'state': state.upper(),
                     'city_or_region': current_city,
                     'directory_url': derived_fallback_url,
-                    'is_active': False  # 🛡️ FIXED: Draft mode lock applied until Stripe webhook fires
+                    'is_active': False,  # Draft mode lock applied until Stripe webhook fires
+                    'staged_leads_data': []  # 🛡️ FIXED: Initializes empty list configuration to clear NoneType bugs
                 }
             )
             
@@ -705,7 +706,7 @@ def stripe_webhook(request):
                             }
                         )
                         
-                        # 🛡️ FIXED: Explicitly unlock the pre-staged background record upon payment confirmation
+                        # Explicitly unlock the pre-staged background record upon payment confirmation
                         target_directory.is_active = True
                         target_directory.save()
                         
@@ -715,7 +716,7 @@ def stripe_webhook(request):
                             defaults={'stripe_session_id': session_dict.get('id')}
                         )
                         
-                        # 🔥 FULFILLMENT: Now that they paid, unpack the staged JSON array 
+                        # FULFILLMENT: Now that they paid, unpack the staged JSON array 
                         # and move the rows into the database!
                         staged_data = getattr(target_directory, 'staged_leads_data', [])
                         if staged_data:

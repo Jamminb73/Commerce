@@ -139,7 +139,6 @@ class Command(BaseCommand):
         for chamber, metrics in session_results_manifest.items():
             self.stdout.write(f"📊 Preview Ready: {chamber} ({len(metrics['leads'])} Staged Vectors Compiled). Payment Status: Pending.")
             
-        # Return transient serialization block to the view orchestration layer
         return json.dumps(session_results_manifest)
 
     def discover_chamber_url(self, page, google_url):
@@ -247,6 +246,9 @@ class Command(BaseCommand):
     def refactored_chamber_scoper(self, target_url, org_name):
         staged_json_payload = []
         resolved_url = target_url
+        
+        # In-memory storage for items intercepted straight from background API requests
+        network_intercepted_leads = []
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -259,6 +261,31 @@ class Command(BaseCommand):
                 ignore_https_errors=True
             )
             page = context.new_page()
+
+            # 🌐 METHOD 1: Network API Interception Layer
+            def handle_response(response):
+                try:
+                    url = response.url.lower()
+                    # Catch endpoints containing typical REST directory data feeds
+                    if any(x in url for x in ['admin-ajax', 'wp-json', 'api/directory', 'staff', 'members/']):
+                        text = response.text()
+                        # Simple high-speed email hunting straight inside raw API strings
+                        found_emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+                        for email in found_emails:
+                            clean_email = email.lower().strip()
+                            if not any(box in clean_email for box in GENERIC_BOXES):
+                                # Infer potential names using prefix parts prior to payment verification splits
+                                prefix = clean_email.split('@')[0]
+                                inferred_name = prefix.replace('.', ' ').replace('-', ' ').title()
+                                network_intercepted_leads.append({
+                                    'rawName': inferred_name,
+                                    'title': "Chamber Executive (API Sourced)",
+                                    'email': clean_email
+                                })
+                except Exception:
+                    pass
+
+            page.on("response", handle_response)
             
             if "google.com/search" in target_url:
                 primary_domain = self.discover_chamber_url(page, target_url)
@@ -279,78 +306,116 @@ class Command(BaseCommand):
                     page.evaluate("window.scrollBy(0, 800);")
                     time.sleep(0.4)
                 
-                # 🔥 HIGH-DEPTH MICRO-SCOPING PARSER
-                extracted_leads = page.evaluate('''() => {
-                    let data = [];
-                    let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
-                    
-                    // Deep structural target spectrum
-                    let containers = document.querySelectorAll(
-                        'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
-                        'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
-                        'div[class*="row"], div[class*="flex"], div[class*="block"], ul > li'
-                    );
-                    
-                    let checkedContainers = new Set();
-
-                    containers.forEach(container => {
-                        if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
-                        
-                        let textContext = (container.innerText || container.textContent || '').trim();
-                        let emailMatch = textContext.match(emailRegex);
-                        let mailtoMatch = container.querySelector('a[href^="mailto:"]');
-                        
-                        if (emailMatch || mailtoMatch) {
-                            let email = "";
-                            if (mailtoMatch) {
-                                email = mailtoMatch.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
-                            } else if (emailMatch) {
-                                email = emailMatch[0].toLowerCase().trim();
-                            }
-
-                            let systemBoxes = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "membership@", "marketing@", "contact@", "join@"];
-                            if (!email || systemBoxes.some(box => email.includes(box))) return;
-
-                            // STRATEGY FIX: Strip formatting/phone-numbers without breaking the structural row collection
-                            let textRows = textContext.split('\\n')
-                                .map(r => r.replace(/[.\\-()\\s\\d]{7,}/g, '').trim()) 
-                                .filter(r => r.length > 1 && !emailRegex.test(r));
-
-                            if (textRows.length >= 1) {
-                                let potentialName = textRows[0];
-                                let potentialTitle = textRows.length > 1 ? textRows[1] : "Chamber Executive";
+                # 🕷️ METHOD 2: Frame Sifting Execution Macro
+                # Collects elements recursively inside every frame context and open Shadow DOM
+                extracted_leads = []
+                
+                all_frames = page.frames
+                for frame in all_frames:
+                    try:
+                        frame_leads = frame.evaluate('''() => {
+                            let data = [];
+                            let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
+                            
+                            // Broad micro-container matching
+                            let containers = document.querySelectorAll(
+                                'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
+                                'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
+                                'div[class*="row"], div[class*="flex"], div[class*="block"], ul > li'
+                            );
+                            
+                            containers.forEach(container => {
+                                if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
                                 
-                                data.push({
-                                    rawName: potentialName,
-                                    title: potentialTitle,
-                                    email: email
-                                });
-                                checkedContainers.add(container);
-                            }
-                        }
-                    });
+                                let textContext = (container.innerText || container.textContent || '').trim();
+                                let emailMatch = textContext.match(emailRegex);
+                                let mailtoMatch = container.querySelector('a[href^="mailto:"]');
+                                
+                                if (emailMatch || mailtoMatch) {
+                                    let email = "";
+                                    if (mailtoMatch) {
+                                        email = mailtoMatch.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                                    } else if (emailMatch) {
+                                        email = emailMatch[0].toLowerCase().trim();
+                                    }
 
-                    // FALLBACK STRATEGY: If container grouping yields 0 hits, grab orphan headers
-                    if (data.length === 0) {
-                        let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
-                        headings.forEach(h => {
-                            let txt = (h.innerText || h.textContent || '').trim();
-                            // Loosened string filter boundary context to capture wider variations
-                            if (txt && txt.length > 3 && txt.length < 50) {
-                                let words = txt.split(/\\s+/);
-                                if (words.length >= 2 && words.length <= 5) {
-                                    let nextEl = h.nextElementSibling;
-                                    let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
-                                    if(nextTxt && nextTxt.length > 3 && nextTxt.length < 80 && !nextTxt.includes('\\n')) {
-                                        data.push({ rawName: txt, title: nextTxt, email: "" });
+                                    let systemBoxes = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "membership@", "marketing@", "contact@", "join@"];
+                                    if (!email || systemBoxes.some(box => email.includes(box))) return;
+
+                                    let textRows = textContext.split('\\n')
+                                        .map(r => r.replace(/[.\\-()\\s\\d]{7,}/g, '').trim()) 
+                                        .filter(r => r.length > 1 && !emailRegex.test(r));
+
+                                    if (textRows.length >= 1) {
+                                        data.push({
+                                            rawName: textRows[0],
+                                            title: textRows.length > 1 ? textRows[1] : "Chamber Executive",
+                                            email: email
+                                        });
                                     }
                                 }
+                            });
+
+                            // 🎯 METHOD 3: Inverted Text-Proximity Sibling Fallback
+                            // If traditional structure lookups fail, hunt directly for mailto anchors page-wide
+                            if (data.length === 0) {
+                                let mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
+                                mailtoLinks.forEach(link => {
+                                    let email = link.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                                    let systemBoxes = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "membership@", "marketing@", "contact@", "join@"];
+                                    if (!email || systemBoxes.some(box => email.includes(box))) return;
+
+                                    // Travel upwards to scan surrounding text contexts
+                                    let parent = link.parentElement;
+                                    let structuralContextText = "";
+                                    for (let i = 0; i < 3; i++) {
+                                        if (parent) {
+                                            structuralContextText = (parent.innerText || parent.textContent || '') + '\\n' + structuralContextText;
+                                            parent = parent.parentElement;
+                                        }
+                                    }
+
+                                    let parts = structuralContextText.split('\\n')
+                                        .map(p => p.replace(/[.\\-()\\s\\d]{7,}/g, '').trim())
+                                        .filter(p => p.length > 2 && !p.includes('@'));
+
+                                    if (parts.length >= 1) {
+                                        data.push({
+                                            rawName: parts[0],
+                                            title: parts.length > 1 ? parts[1] : "Chamber Executive",
+                                            email: email
+                                        });
+                                    }
+                                });
                             }
-                        });
-                    }
-                    
-                    return data;
-                }''')
+
+                            // Heading fallback layer
+                            if (data.length === 0) {
+                                let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
+                                headings.forEach(h => {
+                                    let txt = (h.innerText || h.textContent || '').trim();
+                                    if (txt && txt.length > 3 && txt.length < 50) {
+                                        let words = txt.split(/\\s+/);
+                                        if (words.length >= 2 && words.length <= 5) {
+                                            let nextEl = h.nextElementSibling;
+                                            let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
+                                            if(nextTxt && nextTxt.length > 3 && nextTxt.length < 80 && !nextTxt.includes('\\n')) {
+                                                data.push({ rawName: txt, title: nextTxt, email: "" });
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            return data;
+                        }''')
+                        if frame_leads:
+                            extracted_leads.extend(frame_leads)
+                    except Exception:
+                        pass
+
+                # Merge runtime DOM outputs with any items captured via network interception
+                extracted_leads.extend(network_intercepted_leads)
 
                 parsed_uri = urllib.parse.urlparse(resolved_url)
                 base_domain = parsed_uri.netloc.replace('www.', '')
@@ -366,7 +431,7 @@ class Command(BaseCommand):
                     lower_title = title.lower()
                     lower_email = email.lower()
 
-                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
+                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIGHT_KEYWORDS):
                         continue
 
                     if any(lower_email.startswith(box) for box in GENERIC_BOXES):

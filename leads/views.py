@@ -348,7 +348,7 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
 
-            # FIX: Pull total memory footprint length from the dynamic field container
+            # Pull total memory footprint length from the dynamic field container
             # instead of querying a database table that we deliberately haven't populated yet.
             staged_payload = getattr(scrape_request, 'staged_leads_data', None)
             leads_found = len(staged_payload) if staged_payload else 0
@@ -475,14 +475,14 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                     'state': state.upper(),
                     'city_or_region': current_city,
                     'directory_url': derived_fallback_url,
-                    'is_active': True
+                    'is_active': False  # 🛡️ FIXED: Draft mode lock applied until Stripe webhook fires
                 }
             )
             
             if created:
                 created_directory_ids.append(directory_obj.id)
             
-            # 🔥 FIX: Capture the raw JSON response payload string directly out of handle() execution
+            # Capture the raw JSON response payload string directly out of handle() execution
             raw_json_output = scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
             
             try:
@@ -503,7 +503,7 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
                 log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
                 time.sleep(random.uniform(3.0, 5.0))
         
-        # 🔥 FIX: Evaluate total leads cleanly relative to pure transient JSON field array storage metrics
+        # Evaluate total leads cleanly relative to pure transient JSON field array storage metrics
         if total_leads_accumulated == 0:
             log_to_database("⚠️ [CLEANUP INTERCEPT]: Pipeline yielded zero verified results. Pruning empty directory nodes...")
             ChamberDirectory.objects.filter(id__in=created_directory_ids).delete()
@@ -587,7 +587,7 @@ def customer_monitor_view(request, request_id):
     if scrape_request.user_email != request.user.email and not request.user.is_staff:
         return redirect('leads_list')
         
-    # FIX: Pull preview leads right out of the serialized JSON staging array field context
+    # Pull preview leads right out of the serialized JSON staging array field context
     directory_record = ChamberDirectory.objects.filter(city_or_region__iexact=scrape_request.city_or_region, state__iexact=scrape_request.state).first()
     staged_payload = getattr(directory_record, 'staged_leads_data', []) if directory_record else []
     preview_leads = staged_payload[:5]
@@ -613,7 +613,7 @@ def customer_monitor_api(request, request_id):
     """API gateway mapping specific client-safe counts and log parameters directly to front-end JSON tickers."""
     req = get_object_or_404(ChamberRequest, id=request_id)
     
-    # FIX: Map live JSON counting indexes straight down to front-end interface meters
+    # Map live JSON counting indexes straight down to front-end interface meters
     directory_record = ChamberDirectory.objects.filter(city_or_region__iexact=req.city_or_region, state__iexact=req.state).first()
     leads_found = len(directory_record.staged_leads_data) if directory_record and directory_record.staged_leads_data else 0
     
@@ -704,6 +704,10 @@ def stripe_webhook(request):
                                 'is_active': True
                             }
                         )
+                        
+                        # 🛡️ FIXED: Explicitly unlock the pre-staged background record upon payment confirmation
+                        target_directory.is_active = True
+                        target_directory.save()
                         
                         UserPurchase.objects.get_or_create(
                             user=user_obj,

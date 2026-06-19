@@ -249,8 +249,6 @@ class Command(BaseCommand):
     def refactored_chamber_scoper(self, target_url, org_name):
         staged_json_payload = []
         resolved_url = target_url
-        
-        # In-memory storage for items intercepted straight from background API requests
         network_intercepted_leads = []
 
         with sync_playwright() as p:
@@ -296,206 +294,212 @@ class Command(BaseCommand):
                     browser.close()
                     return staged_json_payload, resolved_url
 
-            # 🎯 NEW: DETECT AND PIVOT AWAY FROM MEMBER DIRECTORY TRAPS
-            if "member-directory" in resolved_url.lower() or "members" in resolved_url.lower():
-                self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target looks like an external business directory. Attempting rescue to internal team paths..."))
+            # 🎯 STAGE 1: Check for External Business Member Directory Traps & Pivot Early
+            if "member-directory" in resolved_url.lower() or "members" in resolved_url.lower() or "directory" in resolved_url.lower():
+                self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target looks like a business index. Attempting rescue to internal human assets..."))
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
-                    # Force code to look for internal leadership or staff tabs instead
                     rescue_url = page.evaluate('''() => {
                         let links = Array.from(document.querySelectorAll('a'));
-                        let targets = ['staff', 'team', 'board', 'leadership', 'governance', 'about'];
+                        let targets = ['staff', 'team', 'board of directors', 'board', 'leadership', 'governance', 'about us', 'about'];
                         for (let t of targets) {
-                            let found = links.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(t) && !a.href.includes('member'));
+                            let found = links.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(t) && !a.href.includes('member-directory') && a.href.startsWith('http'));
                             if (found) return found.href;
                         }
                         return null;
                     }''')
                     if rescue_url:
                         resolved_url = rescue_url
-                        self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Redirecting pipeline focus to: {resolved_url}"))
+                        self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Rerouted tracking coordinates to: {resolved_url}"))
                 except Exception:
                     pass
 
-            self.stdout.write(f"⚙️ [PLAYWRIGHT]: Executing targeted element micro-scoping at: {resolved_url}")
-            
-            try:
-                page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
-                time.sleep(5) 
-                
-                for _ in range(6):
-                    page.evaluate("window.scrollBy(0, 800);")
-                    time.sleep(0.4)
-                
-                # 🕷️ METHOD 2: Frame Sifting Execution Macro
+            # Loop block to allow up to 2 fallback pages (current target vs. generic about fallback) if the first yields 0 records
+            for attempt in range(2):
+                if attempt == 1:
+                    # 🎯 STAGE 2: If the primary scrape yielded nothing, slow down and run a secondary deep search
+                    parsed_uri = urllib.parse.urlparse(resolved_url)
+                    fallback_base = f"{parsed_uri.scheme}://{parsed_uri.netloc}"
+                    self.stdout.write(self.style.WARNING(f"⚠️ [ZERO YIELD RESCUE]: Current node dropped 0 vectors. Pivoting back to structural root navigation tree..."))
+                    resolved_url = self.crawl_for_directory_target(page, fallback_base)
+
+                self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing targeted element micro-scoping at: {resolved_url}")
                 extracted_leads = []
                 
-                all_frames = page.frames
-                for frame in all_frames:
-                    try:
-                        frame_leads = frame.evaluate('''([systemBoxes]) => {
-                            let data = [];
-                            let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
-                            
-                            let containers = document.querySelectorAll(
-                                'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
-                                'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
-                                'div[class*="row"], div[class*="flex"], div[class*="block"], ul > li'
-                            );
-                            
-                            containers.forEach(container => {
-                                if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
+                try:
+                    page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
+                    time.sleep(5) 
+                    
+                    for _ in range(6):
+                        page.evaluate("window.scrollBy(0, 800);")
+                        time.sleep(0.4)
+                    
+                    all_frames = page.frames
+                    for frame in all_frames:
+                        try:
+                            frame_leads = frame.evaluate('''([systemBoxes]) => {
+                                let data = [];
+                                let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
                                 
-                                let textContext = (container.innerText || container.textContent || '').trim();
-                                let emailMatch = textContext.match(emailRegex);
-                                let mailtoMatch = container.querySelector('a[href^="mailto:"]');
+                                let containers = document.querySelectorAll(
+                                    'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
+                                    'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
+                                    'div[class*="row"], div[class*="flex"], div[class*="block"], ul > li'
+                                );
                                 
-                                if (emailMatch || mailtoMatch) {
-                                    let email = "";
-                                    if (mailtoMatch) {
-                                        email = mailtoMatch.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
-                                    } else if (emailMatch) {
-                                        email = emailMatch[0].toLowerCase().trim();
-                                    }
+                                containers.forEach(container => {
+                                    if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
+                                    
+                                    let textContext = (container.innerText || container.textContent || '').trim();
+                                    let emailMatch = textContext.match(emailRegex);
+                                    let mailtoMatch = container.querySelector('a[href^="mailto:"]');
+                                    
+                                    if (emailMatch || mailtoMatch) {
+                                        let email = "";
+                                        if (mailtoMatch) {
+                                            email = mailtoMatch.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                                        } else if (emailMatch) {
+                                            email = emailMatch[0].toLowerCase().trim();
+                                        }
 
-                                    if (!email || systemBoxes.some(box => email.includes(box))) return;
+                                        if (!email || systemBoxes.some(box => email.includes(box))) return;
 
-                                    let textRows = textContext.split('\\n')
-                                        .map(r => r.replace(/[.\\-()\\s\\d]{7,}/g, '').trim()) 
-                                        .filter(r => r.length > 1 && !emailRegex.test(r));
+                                        let textRows = textContext.split('\\n')
+                                            .map(r => r.replace(/[.\\-()\\s\\d]{7,}/g, '').trim()) 
+                                            .filter(r => r.length > 1 && !emailRegex.test(r));
 
-                                    if (textRows.length >= 1) {
-                                        data.push({
-                                            rawName: textRows[0],
-                                            title: textRows.length > 1 ? textRows[1] : "Chamber Executive",
-                                            email: email
-                                        });
-                                    }
-                                }
-                            });
-
-                            // 🎯 METHOD 3: Inverted Text-Proximity Sibling Fallback
-                            if (data.length === 0) {
-                                let mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
-                                mailtoLinks.forEach(link => {
-                                    let email = link.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
-                                    if (!email || systemBoxes.some(box => email.includes(box))) return;
-
-                                    let parent = link.parentElement;
-                                    let structuralContextText = "";
-                                    for (let i = 0; i < 3; i++) {
-                                        if (parent) {
-                                            structuralContextText = (parent.innerText || parent.textContent || '') + '\\n' + structuralContextText;
-                                            parent = parent.parentElement;
+                                        if (textRows.length >= 1) {
+                                            data.push({
+                                                rawName: textRows[0],
+                                                title: textRows.length > 1 ? textRows[1] : "Chamber Executive",
+                                                email: email
+                                            });
                                         }
                                     }
-
-                                    let parts = structuralContextText.split('\\n')
-                                        .map(p => p.replace(/[.\\-()\\s\\d]{7,}/g, '').trim())
-                                        .filter(p => p.length > 2 && !p.includes('@'));
-
-                                    if (parts.length >= 1) {
-                                        data.push({
-                                            rawName: parts[0],
-                                            title: parts.length > 1 ? parts[1] : "Chamber Executive",
-                                            email: email
-                                        });
-                                    }
                                 });
-                            }
 
-                            // Heading fallback layer
-                            if (data.length === 0) {
-                                let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
-                                headings.forEach(h => {
-                                    let txt = (h.innerText || h.textContent || '').trim();
-                                    if (txt && txt.length > 3 && txt.length < 50) {
-                                        let words = txt.split(/\\s+/);
-                                        if (words.length >= 2 && words.length <= 5) {
-                                            let nextEl = h.nextElementSibling;
-                                            let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
-                                            if(nextTxt && nextTxt.length > 3 && nextTxt.length < 80 && !nextTxt.includes('\\n')) {
-                                                data.push({ rawName: txt, title: nextTxt, email: "" });
+                                // 🎯 METHOD 3: Inverted Text-Proximity Sibling Fallback
+                                if (data.length === 0) {
+                                    let mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
+                                    mailtoLinks.forEach(link => {
+                                        let email = link.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                                        if (!email || systemBoxes.some(box => email.includes(box))) return;
+
+                                        let parent = link.parentElement;
+                                        let structuralContextText = "";
+                                        for (let i = 0; i < 3; i++) {
+                                            if (parent) {
+                                                structuralContextText = (parent.innerText || parent.textContent || '') + '\\n' + structuralContextText;
+                                                parent = parent.parentElement;
+                                        }
+                                        }
+
+                                        let parts = structuralContextText.split('\\n')
+                                            .map(p => p.replace(/[.\\-()\\s\\d]{7,}/g, '').trim())
+                                            .filter(p => p.length > 2 && !p.includes('@'));
+
+                                        if (parts.length >= 1) {
+                                            data.push({
+                                                rawName: parts[0],
+                                                title: parts.length > 1 ? parts[1] : "Chamber Executive",
+                                                email: email
+                                            });
+                                        }
+                                    });
+                                }
+
+                                // Heading fallback layer
+                                if (data.length === 0) {
+                                    let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
+                                    headings.forEach(h => {
+                                        let txt = (h.innerText || h.textContent || '').trim();
+                                        if (txt && txt.length > 3 && txt.length < 50) {
+                                            let words = txt.split(/\\s+/);
+                                            if (words.length >= 2 && words.length <= 5) {
+                                                let nextEl = h.nextElementSibling;
+                                                let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
+                                                if(nextTxt && nextTxt.length > 3 && nextTxt.length < 80 && !nextTxt.includes('\\n')) {
+                                                    data.push({ rawName: txt, title: nextTxt, email: "" });
+                                                }
                                             }
                                         }
-                                    }
-                                });
-                            }
+                                    });
+                                }
+                                
+                                return data;
+                            }''', [GENERIC_BOXES])
                             
-                            return data;
-                        }''', [GENERIC_BOXES])
+                            if frame_leads:
+                                extracted_leads.extend(frame_leads)
+                        except Exception:
+                            pass
+
+                    extracted_leads.extend(network_intercepted_leads)
+
+                    parsed_uri = urllib.parse.urlparse(resolved_url)
+                    base_domain = parsed_uri.netloc.replace('www.', '')
+
+                    seen_names = set()
+
+                    for lead in extracted_leads:
+                        raw_name = lead['rawName'].strip()
+                        title = lead['title'].strip()
+                        email = lead['email'].strip()
+
+                        lower_name = raw_name.lower()
+                        lower_title = title.lower()
+                        lower_email = email.lower()
+
+                        if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
+                            continue
+
+                        if any(lower_email.startswith(box) for box in GENERIC_BOXES):
+                            continue
+
+                        if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy", "staff"]):
+                            continue
+
+                        if email in title:
+                            title = title.replace(email, "").strip()
+
+                        first_name, last_name = parse_name(raw_name)
+                        full_name = f"{first_name} {last_name}".strip()
                         
-                        if frame_leads:
-                            extracted_leads.extend(frame_leads)
-                    except Exception:
-                        pass
+                        if not first_name or len(first_name) < 2 or full_name in seen_names:
+                            continue
+                            
+                        seen_names.add(full_name)
 
-                extracted_leads.extend(network_intercepted_leads)
+                        cleaned_title = title.strip().strip('-').strip(',').replace("  ", " ")
+                        if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile", "bio"]:
+                            cleaned_title = "Chamber Executive"
 
-                parsed_uri = urllib.parse.urlparse(resolved_url)
-                base_domain = parsed_uri.netloc.replace('www.', '')
+                        if not email:
+                            first_initial = first_name[0].lower()
+                            clean_last = last_name.lower().replace(" ", "").replace("-", "")
+                            email = f"{first_initial}{clean_last}@{base_domain}"
 
-                seen_names = set()
+                        if any(email.lower().startswith(box) for box in GENERIC_BOXES):
+                            continue
 
-                for lead in extracted_leads:
-                    raw_name = lead['rawName'].strip()
-                    title = lead['title'].strip()
-                    email = lead['email'].strip()
-
-                    lower_name = raw_name.lower()
-                    lower_title = title.lower()
-                    lower_email = email.lower()
-
-                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
-                        continue
-
-                    if any(lower_email.startswith(box) for box in GENERIC_BOXES):
-                        continue
-
-                    if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy", "staff"]):
-                        continue
-
-                    if email in title:
-                        title = title.replace(email, "").strip()
-
-                    first_name, last_name = parse_name(raw_name)
-                    full_name = f"{first_name} {last_name}".strip()
-                    
-                    if not first_name or len(first_name) < 2 or full_name in seen_names:
-                        continue
+                        staged_json_payload.append({
+                            'first_name': first_name.strip().title(),
+                            'last_name': last_name.strip().title(),
+                            'title': cleaned_title,
+                            'email': email.lower().strip()
+                        })
                         
-                    seen_names.add(full_name)
+                        self.stdout.write(f"   ⏳ Staged candidate memory structure: {first_name.title()} {last_name.title()} ({email})")
 
-                    cleaned_title = title.strip().strip('-').strip(',').replace("  ", " ")
-                    if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile", "bio"]:
-                        cleaned_title = "Chamber Executive"
+                    if len(staged_json_payload) > 0:
+                        self.stdout.write(self.style.SUCCESS(f"   🔒 Compiled {len(staged_json_payload)} temporary lead vectors securely in-memory."))
+                        break  # Yield verified results, stop the rescue fallback attempt loop!
+                    else:
+                        self.stdout.write(self.style.WARNING(f"   ⚠️ Micro-scoping loop hit 0 targets on current path."))
 
-                    if not email:
-                        first_initial = first_name[0].lower()
-                        clean_last = last_name.lower().replace(" ", "").replace("-", "")
-                        email = f"{first_initial}{clean_last}@{base_domain}"
-
-                    if any(email.lower().startswith(box) for box in GENERIC_BOXES):
-                        continue
-
-                    # 📦 ASSEMBLE IN-MEMORY ARTIFACTS ONLY
-                    staged_json_payload.append({
-                        'first_name': first_name.strip().title(),
-                        'last_name': last_name.strip().title(),
-                        'title': cleaned_title,
-                        'email': email.lower().strip()
-                    })
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"   ❌ Execution crash on {org_name}: {e}"))
                     
-                    self.stdout.write(f"   ⏳ Staged candidate memory structure: {first_name.title()} {last_name.title()} ({email})")
-
-                self.stdout.write(self.style.SUCCESS(f"   🔒 Compiled {len(staged_json_payload)} temporary lead vectors securely in-memory."))
-
-                if len(staged_json_payload) == 0:
-                    self.stdout.write(self.style.WARNING(f"   ⚠️ Micro-scoping layer returned 0 records for {org_name}."))
-
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"   ❌ Execution crash on {org_name}: {e}"))
-                
             browser.close()
 
         return staged_json_payload, resolved_url

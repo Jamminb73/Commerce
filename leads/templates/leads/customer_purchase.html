@@ -181,8 +181,11 @@
                     </div>
                 </div>
                 {% empty %}
-                <div class="py-3 text-center text-slate-400 font-mono text-xs">
-                    Assembling localized contact matrices... Preview ready instantly upon completion.
+                <div id="preview-rows-wrapper" class="divide-y divide-slate-200/80">
+                    <div class="py-6 text-center text-slate-400 font-mono text-xs flex flex-col items-center justify-center gap-2">
+                        <div class="h-4 w-4 border-2 border-indigo-900/30 border-t-indigo-900 rounded-full animate-spin"></div>
+                        Assembling localized contact matrices... Preview ready instantly upon completion.
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -206,6 +209,7 @@
     const counterDisplay = document.getElementById("counter-display");
     const clientCompletionDeck = document.getElementById("clientCompletionDeck");
     const clientFailureDeck = document.getElementById("clientFailureDeck");
+    const previewWrapper = document.getElementById("preview-rows-wrapper");
 
     function pollPipelineTelemetry() {
         fetch(`/workspace/monitor/api/${requestId}/`)
@@ -224,7 +228,7 @@
                 statusDisplay.style.backgroundColor = "";
                 statusDisplay.style.color = "";
 
-                // 💡 TRY BEFORE YOU BUY ROUTER SYSTEM
+                // 💡 TRY BEFORE YOU BUY ROUTER SYSTEM WITH HYDRATION SAFEGUARDS
                 if (currentStatus === 'completed') {
                     const count = parseInt(data.leads_count) || 0;
                     
@@ -233,6 +237,12 @@
                         statusDisplay.textContent = "Data Ready 🚀";
                         clientCompletionDeck.classList.remove('hidden');
                         clientFailureDeck.classList.add('hidden');
+                        
+                        // 🔄 DYNAMIC HYDRATION LOCK: If the preview rows wrapper exists, reload the viewport 
+                        // one single time to flush the Django backend context array into the HTML preview rows template
+                        if (previewWrapper) {
+                            setTimeout(() => { window.location.reload(); }, 300);
+                        }
                     } else {
                         // The scraper finished but hit zero real people (junk department mailboxes)
                         statusDisplay.className = "status-badge";
@@ -250,7 +260,7 @@
                     clientFailureDeck.classList.remove('hidden');
                     clientCompletionDeck.classList.add('hidden');
                 } else {
-                    // Caters to 'scraping' or 'pending' active execution layers
+                    // Handles 'scraping', 'pending', or 'processing' active execution layers smoothly
                     statusDisplay.className = "status-badge status-scraping";
                     statusDisplay.textContent = "Mining Workspace Live ⚡";
                     clientCompletionDeck.classList.add('hidden');
@@ -258,7 +268,7 @@
                 }
 
                 // Loop management condition controls
-                if (currentStatus === 'scraping' || currentStatus === 'pending' || currentStatus === 'initializing') {
+                if (currentStatus === 'scraping' || currentStatus === 'pending' || currentStatus === 'initializing' || currentStatus === 'processing') {
                     setTimeout(pollPipelineTelemetry, 1500);
                 }
             })

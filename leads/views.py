@@ -612,8 +612,14 @@ def customer_monitor_api(request, request_id):
     # Live count evaluation matching records created for this location string
     leads_found = ChamberLead.objects.filter(organization__icontains=req.city_or_region).count()
     
+    current_status = req.status
+    # 💡 ANTI-RACE CONDITION DELAY: If the background thread says 'completed' but Postgres is still 
+    # writing data rows, hold the frontend status loop back in 'scraping' so the preview block maps cleanly.
+    if current_status == 'completed' and leads_found == 0:
+        current_status = 'scraping'
+    
     return JsonResponse({
-        'status': req.status,
+        'status': current_status,
         'logs': req.console_logs,
         'leads_count': leads_found
     })
@@ -683,7 +689,6 @@ def stripe_webhook(request):
                 if scrape_request_id:
                     scrape_request = ChamberRequest.objects.filter(id=scrape_request_id).first()
                     if scrape_request:
-                        # 💡 TRY BEFORE YOU BUY WEBHOOK FULLFILLMENT:
                         # Locate or generate the active ChamberDirectory element so the workspace permissions map open cleanly
                         target_directory, _ = ChamberDirectory.objects.get_or_create(
                             city_or_region__iexact=scrape_request.city_or_region,

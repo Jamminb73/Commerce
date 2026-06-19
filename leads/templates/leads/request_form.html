@@ -5,86 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request Custom Scrape | Premium Business Data</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        :root {
+            --primary-bg: #1a2a6c;
+            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
+        }
+    </style>
 </head>
-<body class="bg-slate-950 font-sans antialiased text-slate-200 min-h-screen flex flex-col justify-between">
+<body class="font-sans antialiased text-slate-800 min-h-screen flex flex-col justify-between py-12 px-4 sm:px-6 lg:px-8">
 
-    <div class="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8 w-full">
+    <div class="max-w-3xl mx-auto w-full bg-white p-8 md:p-10 rounded-2xl shadow-2xl">
         
-        <div class="mb-8 text-center">
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">Request Custom Target Scrape</h1>
-            <p class="text-sm text-slate-400 mt-2">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
+        <div class="mb-8 text-center md:text-left border-b border-slate-200 pb-6">
+            <h1 class="text-3xl font-extrabold text-[#1a2a6c] tracking-tight">Request Custom Target Scrape</h1>
+            <p class="text-sm text-slate-500 mt-2">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
-            
-            <div class="bg-emerald-950/30 border border-emerald-500/20 rounded-xl p-4 mb-6 text-sm text-emerald-400">
-                🔒 <strong>Custom Extraction Rate:</strong> $8.00 flat per directory. <br>
-                <span class="text-xs text-slate-400">Note: If our active inventory framework determines your target territory has already been cataloged, your order parameters will automatically transition to an Instant Directory Unlock ($9.99) so you can bypass standard pipeline queues and download the data right away.</span>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6 text-sm text-blue-900">
+            🔒 <strong>Custom Extraction Rate:</strong> $8.00 flat per directory. <br>
+            <span class="text-xs text-blue-700/90 mt-1 block">Note: If our active inventory framework determines your target territory has already been cataloged, your order parameters will automatically transition to an Instant Directory Unlock ($9.99) so you can bypass standard pipeline queues and download the data right away.</span>
+        </div>
+
+        <form method="POST" action="{% url 'request_custom_scrape' %}">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Contact Email Address</label>
+                    <input type="email" name="user_email" id="clientEmail" required value="{{ user_email }}"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Number of Target Territories</label>
+                    <select name="chambers_count" id="clientBatchSize" required onchange="evaluateClientButton()"
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] cursor-pointer transition">
+                        <option value="1">1 Target Location ($8.00)</option>
+                        <option value="2">2 Target Locations ($16.00)</option>
+                        <option value="3">3 Target Locations ($24.00)</option>
+                        <option value="4">4 Target Locations ($32.00)</option>
+                        <option value="5">5 Target Locations (🔥 Buy 4 Get 1 Free! - $32.00)</option>
+                    </select>
+                </div>
             </div>
 
-            <form method="POST" action="{% url 'request_custom_scrape' %}">
-                {% csrf_token %}
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Contact Email Address</label>
-                        <input type="email" name="user_email" id="clientEmail" required value="{{ user_email }}"
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 transition">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Number of Target Territories</label>
-                        <select name="chambers_count" id="clientBatchSize" required onchange="evaluateClientButton()"
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 cursor-pointer transition">
-                            <option value="1">1 Target Location ($8.00)</option>
-                            <option value="2">2 Target Locations ($16.00)</option>
-                            <option value="3">3 Target Locations ($24.00)</option>
-                            <option value="4">4 Target Locations ($32.00)</option>
-                            <option value="5">5 Target Locations (🔥 Buy 4 Get 1 Free! - $32.00)</option>
-                        </select>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">State Focus</label>
+                    <select name="state" id="clientStateSelect" required onchange="evaluateClientButton()"
+                            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] cursor-pointer transition">
+                        <option value="GA">Georgia</option>
+                        <option value="">Select a State...</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                    </select>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div class="md:col-span-1">
-                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">State Focus</label>
-                        <select name="state" id="clientStateSelect" required onchange="evaluateClientButton()"
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 cursor-pointer transition">
-                            <option value="GA">Georgia</option>
-                            <option value="">Select a State...</option>
-                            <option value="AL">Alabama</option>
-                            <option value="AK">Alaska</option>
-                            <option value="AZ">Arizona</option>
-                            <option value="AR">Arkansas</option>
-                            <option value="CA">California</option>
-                            <option value="CO">Colorado</option>
-                            <option value="CT">Connecticut</option>
-                            <option value="DE">Delaware</option>
-                            <option value="FL">Florida</option>
-                            </select>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">City or Territory Regions</label>
-                        <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="kennesaw"
-                               oninput="evaluateClientButton()"
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-mono placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 transition">
-                    </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">City or Territory Regions</label>
+                    <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="kennesaw"
+                           oninput="evaluateClientButton()"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-[#1a2a6c] transition">
                 </div>
+            </div>
 
-                <div class="pt-4 border-t border-slate-800">
-                    <button type="submit" id="clientSubmitBtn" disabled
-                            class="w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm transition duration-150">
-                        Fill Required Target Locations to Activate Checkout
-                    </button>
-                </div>
-            </form>
+            <div class="pt-4 border-t border-slate-200">
+                <button type="submit" id="clientSubmitBtn" disabled
+                        class="w-full bg-slate-200 text-slate-400 font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm cursor-not-allowed transition duration-150">
+                    Fill Required Target Locations to Activate Checkout
+                </button>
+            </div>
+        </form>
 
-        </div>
     </div>
 
     <script>
-        // 💡 FIXED: Flipped filter configuration so fallback evaluates before character mapping marks it safe
         const catalogedCities = {{ active_cities_json|default:"[]"|safe }};
 
         function evaluateClientButton() {
@@ -100,28 +106,26 @@
             if (isStateSelected && isCityFilled) {
                 submitBtn.disabled = false;
                 
-                // DYNAMIC PRICE INTERCEPT LAYER
                 if (catalogedCities.includes(currentCityTrimmed)) {
                     // Match found inside database sets!
-                    submitBtn.className = "w-full bg-amber-600 hover:bg-amber-500 text-white font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5";
+                    submitBtn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5 active:translate-y-0";
                     submitBtn.innerText = "⚡ Instant Catalog Unlock Confirmed: Access Database ($9.99)";
                 } else {
                     // Fresh on-demand target region routing
                     const selectedQty = parseInt(batchSelect.value) || 1;
                     let targetPrice = selectedQty * 8;
-                    if (selectedQty === 5) targetPrice = 32; // Tier pricing override
+                    if (selectedQty === 5) targetPrice = 32; 
 
-                    submitBtn.className = "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5";
+                    submitBtn.className = "w-full bg-[#1a2a6c] hover:bg-[#2a3b8c] text-white font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5 active:translate-y-0";
                     submitBtn.innerText = `🚀 Ignite Live Preview Sequence: Extract Dataset ($${targetPrice}.00)`;
                 }
             } else {
                 submitBtn.disabled = true;
-                submitBtn.className = "w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm";
+                submitBtn.className = "w-full bg-slate-200 text-slate-400 font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm cursor-not-allowed";
                 submitBtn.innerText = "Fill Required Target Locations to Activate Checkout";
             }
         }
 
-        // Initialize button metrics on layout baseline entry sequence
         document.addEventListener("DOMContentLoaded", evaluateClientButton);
     </script>
 </body>

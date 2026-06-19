@@ -5,7 +5,7 @@ import re
 import urllib.parse
 import json
 
-# Force Django to allow database operations inside Playwright's loop context (if used elsewhere)
+# Force Django to allow database operations inside Playwright's loop context
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 from django.core.management.base import BaseCommand
@@ -44,7 +44,7 @@ def is_valid_human_name(name_str):
     clean_str = name_str.strip()
     
     # Threshold check: Names aren't tiny, massive, and don't contain emails
-    if len(clean_str) < 3 or len(clean_str) > 35 or "@" in clean_str:
+    if len(clean_str) < 3 or len(clean_str) > 45 or "@" in clean_str:
         return False
         
     # Drop known layout strings instantly
@@ -56,13 +56,13 @@ def is_valid_human_name(name_str):
     if any(keyword in lower_str for keyword in ORGANIZATION_KEYWORDS):
         return False
 
-    # Check word counts: Human directory names are typically 2 to 3 words
+    # Check word counts: Human directory names are typically 2 to 4 words (allowing suffix credentials)
     words = clean_str.split()
-    if len(words) < 2 or len(words) > 3:
+    if len(words) < 2 or len(words) > 4:
         return False
         
-    # Basic character sanitization gate
-    if not re.match(r"^[a-zA-Z\s\.\-\'’]+$", clean_str):
+    # Basic character sanitization gate (allowing commas for suffix credentials)
+    if not re.match(r"^[a-zA-Z\s\.\,\-\'’]+$", clean_str):
         return False
 
     # 💎 PARSER LAYER: Let nameparser dissect the layout mechanics
@@ -73,10 +73,6 @@ def is_valid_human_name(name_str):
         if not parsed.first or not parsed.last:
             return False
             
-        # Catch instances where structural titles mimic human configurations
-        if len(words) == 3 and not parsed.middle and parsed.title:
-            return False
-            
     except Exception:
         return False
         
@@ -85,10 +81,13 @@ def is_valid_human_name(name_str):
 
 def parse_name(raw_name):
     """Splits full names cleanly into First and Last using nameparser properties."""
-    if not is_valid_human_name(raw_name):
+    # Clean up trailing structural punctuation before validating
+    clean_name = re.sub(r'[\s,]+(CEO|President|CPA|CCE|MBA|PC|Executive).*$', '', raw_name, flags=re.IGNORECASE).strip()
+    
+    if not is_valid_human_name(clean_name):
         return "", ""
 
-    parsed = HumanName(raw_name.strip())
+    parsed = HumanName(clean_name)
     return parsed.first.strip(), parsed.last.strip()
 
 
@@ -105,8 +104,7 @@ class Command(BaseCommand):
         custom_name = options.get('name')
         target_state = options.get('state')
 
-        # In-memory session payload collection dictionary
-        # ZERO DATABASE OBJECTS INITIALIZED OR ACCESSED HERE
+        # Pure in-memory dictionary payload manifestation
         session_results_manifest = {}
 
         if target_url and custom_name:
@@ -138,13 +136,10 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("\n🎉 Done! Proximity staging extraction finished."))
         
-        # Output standard summary metrics for checkout/preview reference without DB commits
         for chamber, metrics in session_results_manifest.items():
             self.stdout.write(f"📊 Preview Ready: {chamber} ({len(metrics['leads'])} Staged Vectors Compiled). Payment Status: Pending.")
             
-        # ⚠️ CRITICAL COMPLIANCE NOTICE: 
-        # Return the raw JSON block directly to downstream views or paywall validation logic.
-        # DO NOT call .save() or Model.objects.create() until a valid payment signature is parsed.
+        # Return transient serialization block to the view orchestration layer
         return json.dumps(session_results_manifest)
 
     def discover_chamber_url(self, page, google_url):
@@ -284,12 +279,12 @@ class Command(BaseCommand):
                     page.evaluate("window.scrollBy(0, 800);")
                     time.sleep(0.4)
                 
-                # 🔥 DEEPER TARGETED ELEMENT MICRO-SCOPING PARSER 
+                # 🔥 HIGH-DEPTH MICRO-SCOPING PARSER
                 extracted_leads = page.evaluate('''() => {
                     let data = [];
                     let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
                     
-                    // DEEPER TARGET MATRIX: Broadened selectors to parse hidden nodes or non-traditional flex wrappers
+                    // Deep structural target spectrum
                     let containers = document.querySelectorAll(
                         'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
                         'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article, ' +
@@ -316,9 +311,10 @@ class Command(BaseCommand):
                             let systemBoxes = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "membership@", "marketing@", "contact@", "join@"];
                             if (!email || systemBoxes.some(box => email.includes(box))) return;
 
+                            // STRATEGY FIX: Strip formatting/phone-numbers without breaking the structural row collection
                             let textRows = textContext.split('\\n')
-                                .map(r => r.trim())
-                                .filter(r => r.length > 1 && !emailRegex.test(r) && !/\\d{3}/.test(r));
+                                .map(r => r.replace(/[.\\-()\\s\\d]{7,}/g, '').trim()) 
+                                .filter(r => r.length > 1 && !emailRegex.test(r));
 
                             if (textRows.length >= 1) {
                                 let potentialName = textRows[0];
@@ -334,17 +330,18 @@ class Command(BaseCommand):
                         }
                     });
 
-                    // FALLBACK DEPTH STRATEGY: If container grouping leaves orphan nodes behind
+                    // FALLBACK STRATEGY: If container grouping yields 0 hits, grab orphan headers
                     if (data.length === 0) {
                         let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong, p[class*="name"], span[class*="name"]'));
                         headings.forEach(h => {
                             let txt = (h.innerText || h.textContent || '').trim();
-                            if (txt && txt.length > 3 && txt.length < 30 && /^[a-zA-Z\\s\\.\\-\\'’]+$/.test(txt)) {
+                            // Loosened string filter boundary context to capture wider variations
+                            if (txt && txt.length > 3 && txt.length < 50) {
                                 let words = txt.split(/\\s+/);
-                                if (words.length >= 2 && words.length <= 3) {
+                                if (words.length >= 2 && words.length <= 5) {
                                     let nextEl = h.nextElementSibling;
                                     let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
-                                    if(nextTxt && nextTxt.length > 3 && nextTxt.length < 60 && !nextTxt.includes('\\n')) {
+                                    if(nextTxt && nextTxt.length > 3 && nextTxt.length < 80 && !nextTxt.includes('\\n')) {
                                         data.push({ rawName: txt, title: nextTxt, email: "" });
                                     }
                                 }
@@ -401,7 +398,7 @@ class Command(BaseCommand):
                     if any(email.lower().startswith(box) for box in GENERIC_BOXES):
                         continue
 
-                    # 📦 ASSEMBLE IN-MEMORY RECORD FOR TRANSIENT EXPORT ONLY
+                    # 📦 ASSEMBLE IN-MEMORY ARTIFACTS ONLY
                     staged_json_payload.append({
                         'first_name': first_name.strip().title(),
                         'last_name': last_name.strip().title(),

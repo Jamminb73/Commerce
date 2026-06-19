@@ -236,26 +236,6 @@
 
 <div class="container">
 
-    <div id="clientFailureDeck" class="hidden border border-red-200 bg-red-50/60 rounded-xl p-6 mb-6 shadow-md">
-        <h3 class="text-red-900 font-bold text-base flex items-center gap-2 mb-2">
-            🔍 No Verified High-Fidelity Contact Leads Found
-        </h3>
-        <p class="text-sm text-slate-700 leading-relaxed mb-4">
-            Our automated collection engine thoroughly scanned the target territory, but could not parse direct local contact nodes. 
-            To maintain our honesty standards, **you have not been billed** and payment options are disabled.
-        </p>
-        <div class="bg-white/80 border border-slate-200/60 rounded-lg p-4 text-xs text-slate-600 space-y-2 mb-5">
-            <span class="font-bold text-slate-800 block mb-1">💡 Troubleshooting Recommendations:</span>
-            <p>• **Verify regional spelling:** Ensure your targeted town string configuration is entered accurately.</p>
-            <p>• **Broaden parameters:** If you're mining a tiny rural location, try targeting the surrounding county or nearest major metropolitan district tier instead.</p>
-            <p>• **Expand names:** Use complete organization descriptions rather than short acronyms.</p>
-        </div>
-        <a href="{% url 'request_custom_scrape' %}" 
-           class="inline-block w-full text-center bg-slate-800 hover:bg-slate-900 text-white font-mono font-bold uppercase tracking-wider py-3.5 px-6 rounded-xl shadow-md transition duration-150 transform hover:-translate-y-0.5 text-sm">
-            🔙 Return to Search Request Dashboard
-        </a>
-    </div>
-
     <header>
         <div class="header-left">
             <h1>Workspace Pipeline: {{ city_or_region|title }}</h1>
@@ -290,6 +270,26 @@
             </div>
         </div>
     </header>
+
+    <div id="clientFailureDeck" class="hidden border border-red-200 bg-red-50/60 rounded-xl p-6 mb-6 shadow-md">
+        <h3 class="text-red-900 font-bold text-base flex items-center gap-2 mb-2">
+            🔍 No Verified High-Fidelity Contact Leads Found
+        </h3>
+        <p class="text-sm text-slate-700 leading-relaxed mb-4">
+            Our automated collection engine thoroughly scanned the target territory, but could not parse direct local contact nodes. 
+            To maintain our honesty standards, **you have not been billed** and payment options are disabled.
+        </p>
+        <div class="bg-white/80 border border-slate-200/60 rounded-lg p-4 text-xs text-slate-600 space-y-2 mb-5">
+            <span class="font-bold text-slate-800 block mb-1">💡 Troubleshooting Recommendations:</span>
+            <p>• **Verify regional spelling:** Ensure your targeted town string configuration is entered accurately.</p>
+            <p>• **Broaden parameters:** If you're mining a tiny rural location, try targeting the surrounding county or nearest major metropolitan district tier instead.</p>
+            <p>• **Expand names:** Use complete organization descriptions rather than short acronyms.</p>
+        </div>
+        <a href="{% url 'request_custom_scrape' %}" 
+           class="inline-block w-full text-center bg-slate-800 hover:bg-slate-900 text-white font-mono font-bold uppercase tracking-wider py-3.5 px-6 rounded-xl shadow-md transition duration-150 transform hover:-translate-y-0.5 text-sm">
+            🔙 Return to Search Request Dashboard
+        </a>
+    </div>
 
     <div class="grid-layout">
         <div class="ticker-card">

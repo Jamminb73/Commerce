@@ -296,6 +296,27 @@ class Command(BaseCommand):
                     browser.close()
                     return staged_json_payload, resolved_url
 
+            # 🎯 NEW: DETECT AND PIVOT AWAY FROM MEMBER DIRECTORY TRAPS
+            if "member-directory" in resolved_url.lower() or "members" in resolved_url.lower():
+                self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target looks like an external business directory. Attempting rescue to internal team paths..."))
+                try:
+                    page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
+                    # Force code to look for internal leadership or staff tabs instead
+                    rescue_url = page.evaluate('''() => {
+                        let links = Array.from(document.querySelectorAll('a'));
+                        let targets = ['staff', 'team', 'board', 'leadership', 'governance', 'about'];
+                        for (let t of targets) {
+                            let found = links.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(t) && !a.href.includes('member'));
+                            if (found) return found.href;
+                        }
+                        return null;
+                    }''')
+                    if rescue_url:
+                        resolved_url = rescue_url
+                        self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Redirecting pipeline focus to: {resolved_url}"))
+                except Exception:
+                    pass
+
             self.stdout.write(f"⚙️ [PLAYWRIGHT]: Executing targeted element micro-scoping at: {resolved_url}")
             
             try:
@@ -425,7 +446,7 @@ class Command(BaseCommand):
                     lower_title = title.lower()
                     lower_email = email.lower()
 
-                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIGHT_KEYWORDS):
+                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
                         continue
 
                     if any(lower_email.startswith(box) for box in GENERIC_BOXES):

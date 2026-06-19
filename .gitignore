@@ -219,3 +219,5 @@ __marimo__/
 
 #CSV
 *.csv
+
+session.txt

@@ -73,8 +73,8 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">State Focus</label>
                         <select name="state" id="clientStateSelect" required onchange="evaluateClientButton()"
                                 class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-[#1a2a6c] cursor-pointer transition">
-                            <option value="GA">Georgia</option>
                             <option value="">Select a State...</option>
+                            <option value="GA">Georgia</option>
                             <option value="AL">Alabama</option>
                             <option value="AK">Alaska</option>
                             <option value="AZ">Arizona</option>
@@ -122,10 +122,13 @@
             if (isStateSelected && isCityFilled) {
                 submitBtn.disabled = false;
                 
-                if (catalogedCities.includes(currentCityTrimmed)) {
+                // 💡 IRON-CLAD GUARDRAIL: Double check string is not empty before checking array inclusion
+                if (currentCityTrimmed !== "" && catalogedCities.includes(currentCityTrimmed)) {
+                    // Match found inside database sets!
                     submitBtn.className = "w-full bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5 active:translate-y-0";
                     submitBtn.innerText = "⚡ Instant Catalog Unlock Confirmed: Access Database ($9.99)";
                 } else {
+                    // Fresh on-demand target region routing
                     const selectedQty = parseInt(batchSelect.value) || 1;
                     let targetPrice = selectedQty * 8;
                     if (selectedQty === 5) targetPrice = 32; 
@@ -140,7 +143,7 @@
             }
         }
 
-        // 🧼 Initialize layout metrics and clear browser persistent input memory on DOM painted line
+        // Initialize layout metrics and clear browser persistent input memory on DOM painted line
         document.addEventListener("DOMContentLoaded", () => {
             const formElement = document.querySelector("form");
             if (formElement) {

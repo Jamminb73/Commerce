@@ -24,7 +24,7 @@
     <nav class="bg-slate-900 border-b border-slate-800 px-8 py-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
             <div class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
-            <h2 class="text-xl font-bold tracking-tight text-white">ChamberPipeline <span class="text-xs font-mono text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded ml-2">CORE CORE V2</span></h2>
+            <h2 class="text-xl font-bold tracking-tight text-white">ChamberPipeline <span class="text-xs font-mono text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded ml-2">CORE V2</span></h2>
         </div>
         <div class="flex items-center gap-4 text-sm font-semibold">
             <span class="text-slate-400 font-mono">Operator: <span class="text-slate-200">{{ username }}</span></span>
@@ -152,9 +152,34 @@
             </form>
 
         </div>
+
+        <div id="pipelineSuccessCard" class="hidden mt-6 bg-slate-900 border border-green-500/30 rounded-2xl p-8 text-center shadow-2xl shadow-green-950/20">
+            <div class="h-12 w-12 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center mx-auto text-xl font-bold mb-4 border border-green-500/30 animate-bounce">
+                ✓
+            </div>
+            <h3 class="text-xl font-bold text-white tracking-tight">Scrape Completed Successfully!</h3>
+            <p class="text-sm text-slate-400 mt-2 mb-6 max-w-md mx-auto">The proximity engine cleanly parsed, sorted, and mapped the contact directory data into your pipeline tables.</p>
+            
+            <a href="/leads/" class="inline-block bg-green-600 hover:bg-green-500 text-white font-mono font-bold uppercase tracking-wider py-3.5 px-8 rounded-xl shadow-lg shadow-green-950/40 transition duration-150 transform hover:-translate-y-0.5 text-sm">
+                🎯 View Workspace Leads
+            </a>
+        </div>
+
+        <div id="pipelineFailureCard" class="hidden mt-6 bg-slate-900 border border-amber-500/30 rounded-2xl p-8 text-center shadow-2xl shadow-amber-950/20">
+            <div class="h-12 w-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto text-xl font-bold mb-4 border border-amber-500/30">
+                ⚠️
+            </div>
+            <h3 class="text-xl font-bold text-white tracking-tight">Pipeline Alert: Manual Verification Initiated</h3>
+            <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+                We hit a minor structural barrier while crawling this specific chamber directory. **Don't worry—your account has been credited and our team has been flagged.**
+            </p>
+            <p class="text-xs text-amber-500/80 font-mono mt-3 max-w-sm mx-auto border border-amber-500/20 bg-amber-950/20 px-3 py-2 rounded-lg">
+                We are manually compiling and validating this target list for you right now. It will appear on your dashboard within a few hours.
+            </p>
+        </div>
         
         <div class="mt-6 flex justify-between items-center text-xs font-mono text-slate-600 px-2">
-            <span>Session Environment: Localhost Loopback</span>
+            <span>Session Environment: Production Droplet</span>
             <span>Database Pipeline Target: PostgreSQL</span>
         </div>
 
@@ -212,6 +237,23 @@
         // Pack values tightly together and slide them back into Django's hidden master processing receiver
         document.getElementById("adminMasterCityString").value = finalValues.join(", ");
         return true;
+    }
+
+    // Pipeline Engine Status Handler Function
+    // Call this dynamically when processing your backend celery/threading webhook responses
+    function updatePipelineStatus(taskStatus) {
+        const successCard = document.getElementById("pipelineSuccessCard");
+        const failureCard = document.getElementById("pipelineFailureCard");
+
+        if (taskStatus === 'COMPLETED') {
+            successCard.classList.remove('hidden');
+            failureCard.classList.add('hidden');
+            successCard.scrollIntoView({ behavior: 'smooth' });
+        } else if (taskStatus === 'FAILED') {
+            failureCard.classList.remove('hidden');
+            successCard.classList.add('hidden');
+            failureCard.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 
     // Fire generation loop on viewport load entry sequence

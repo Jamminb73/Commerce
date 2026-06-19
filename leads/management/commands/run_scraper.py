@@ -11,6 +11,17 @@ from django.core.management.base import BaseCommand
 from playwright.sync_api import sync_playwright
 from leads.models import ChamberLead, ChamberDirectory 
 
+# 🛡️ THE HIGH-FIDELITY EXTRACTION FILTER MATRIX
+BLACKLIST_KEYWORDS = (
+    'camping', 'toll', 'road', 'download', 'pdf', 'excel', 'word', 'powerpoint',
+    'trip', 'guide', 'visit', 'follow us', 'our mission', 'privacy policy', 
+    'terms of service', 'about us', 'contact us', 'newsletter', 'copyright',
+    'explore', 'vacation', 'listing', 'advertisement', 'heritage'
+)
+
+GENERIC_BOXES = ('info@', 'support@', 'admin@', 'marketing@', 'contact@', 'webmaster@', 'help@')
+
+
 def parse_name(raw_name):
     """Splits full names cleanly into First and Last, handling middle initials."""
     if not raw_name or "@" in raw_name:
@@ -254,7 +265,6 @@ class Command(BaseCommand):
                     let seenEmails = new Set();
                     let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
                     
-                    // Fallback tracking collection array if zero direct text emails exist
                     let visualBlocks = [];
                     
                     let elements = Array.from(document.querySelectorAll('body *')).filter(el => {
@@ -297,16 +307,14 @@ class Command(BaseCommand):
                         }
                     }
 
-                    // Pass 2: If direct structural layout yielded 0, pull adjacent heading pairs for corporate interpolation
+                    // Pass 2: Fallback lookups
                     if (data.length === 0) {
                         let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, p, strong, div'));
                         for(let k = 0; k < headings.length; k++) {
                             let txt = (headings[k].innerText || headings[k].textContent || '').trim();
-                            // If block size looks like a human clean name (2-3 words, no numbers/symbols)
                             if (txt && txt.length > 3 && txt.length < 30 && /^[a-zA-Z\\s\\.\\-\\'’]+$/.test(txt)) {
                                 let wordCount = txt.split(/\\s+/).length;
                                 if(wordCount >= 2 && wordCount <= 3) {
-                                    // Snag the very next element block layout to assume as title mapping
                                     let nextEl = headings[k].nextElementSibling;
                                     let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
                                     if(nextTxt && nextTxt.length > 3 && nextTxt.length < 60 && !nextTxt.includes('\\n')) {
@@ -332,8 +340,18 @@ class Command(BaseCommand):
                     title = lead['title'].strip()
                     email = lead['email'].strip()
 
-                    # Deduplicate and skip corporate navigation links or junk words captured by block matching
-                    if any(bad in raw_name.lower() for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy"]):
+                    # 🛡️ SYSTEM FILTER LAYER: Drop general web elements or blacklisted vocabulary terms
+                    lower_name = raw_name.lower()
+                    lower_title = title.lower()
+                    lower_email = email.lower()
+
+                    if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
+                        continue
+
+                    if any(lower_email.startswith(box) for box in GENERIC_BOXES):
+                        continue
+
+                    if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy"]):
                         continue
 
                     if email in title:
@@ -350,12 +368,15 @@ class Command(BaseCommand):
                     if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile"]:
                         cleaned_title = "Chamber Executive"
 
-                    # 💎 FINESSE INTERPOLATION LAYER: If site hid raw emails, auto-generate standard corporate patterns
+                    # 💎 FINESSE INTERPOLATION LAYER
                     if not email:
                         first_initial = first_name[0].lower()
                         clean_last = last_name.lower().replace(" ", "").replace("-", "")
-                        # Pattern: jdoe@chamberdomain.org
                         email = f"{first_initial}{clean_last}@{base_domain}"
+
+                    # Verify one more time that generated email handles don't contain generic blocks
+                    if any(email.lower().startswith(box) for box in GENERIC_BOXES):
+                        continue
 
                     lead_obj, created = ChamberLead.objects.update_or_create(
                         email=email,

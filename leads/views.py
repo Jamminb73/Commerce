@@ -639,10 +639,12 @@ def customer_monitor_api(request, request_id):
     leads_found = ChamberLead.objects.filter(organization__icontains=req.city_or_region).count()
     
     current_status = req.status
-    # 💡 ANTI-RACE CONDITION DELAY: If the background thread says 'completed' but Postgres is still 
-    # writing data rows, hold the frontend status loop back in 'scraping' so the preview block maps cleanly.
+    # 💡 ANTI-RACE CONDITION DELAY FIXED: Only report 'scraping' if the background operational thread is actually active.
+    # If the thread explicitly prints out its compilation complete line, drop the forced placeholder delay loop.
     if current_status == 'completed' and leads_found == 0:
-        current_status = 'scraping'
+        logs_str = req.console_logs or ""
+        if "Batch pipeline compilation complete" not in logs_str:
+            current_status = 'scraping'
     
     return JsonResponse({
         'status': current_status,

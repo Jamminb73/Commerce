@@ -71,7 +71,7 @@
             color: #22543d;
         }
 
-        .ticker-grid {
+        .grid-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
@@ -150,7 +150,7 @@
         <div id="status-display" class="status-badge status-scraping">Initializing</div>
     </header>
 
-    <div class="ticker-grid">
+    <div class="grid-layout">
         <div class="ticker-card">
             <div id="counter-display" class="ticker-val">0</div>
             <div class="ticker-label">High-Fidelity Leads Compiled</div>
@@ -161,7 +161,7 @@
         </div>
     </div>
 
-    <h3 style="color: var(--text-dark); margin-bottom: 12px;" class="font-semibold">Active Operations Log:</h3>
+    <h2 style="color: var(--text-dark); margin-bottom: 12px;" class="font-semibold text-base">Active Operations Log:</h2>
     <div id="console-logs" class="console-box">Connecting to backend automation core...</div>
 
     <div id="clientCompletionDeck" class="hidden space-y-6 mt-6">
@@ -250,6 +250,8 @@
                         statusDisplay.style.backgroundColor = "#fff5f5";
                         statusDisplay.style.color = "#c53030";
                         statusDisplay.textContent = "EMPTY DATASET ⚠️";
+                        
+                        // 🚀 REVEALS TERMINAL DECK WINDOW FOR EMPTY SWEEPS
                         clientFailureDeck.classList.remove('hidden');
                         clientCompletionDeck.classList.add('hidden');
                     }

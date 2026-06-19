@@ -4,486 +4,125 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request Custom Scrape | Premium Business Data</title>
-    <style>
-        :root {
-            --primary-bg: #1a2a6c;
-            --accent-color: #f39c12;
-            --text-dark: #2d3748;
-            --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary-bg) 0%, #2a3b8c 100%);
-            margin: 0;
-            padding: 40px 20px;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            box-sizing: border-box;
-        }
-
-        .container {
-            max-width: 800px;
-            width: 100%;
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: var(--card-shadow);
-            box-sizing: border-box;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 20px;
-            margin-bottom: 25px;
-        }
-
-        header h1 {
-            color: var(--primary-bg);
-            margin: 0;
-            font-size: 2rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .subtitle {
-            font-size: 1.05rem;
-            color: #718096;
-            margin-top: 5px;
-            margin-bottom: 30px;
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 600px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        label {
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.95rem;
-        }
-
-        input[type="text"], input[type="email"], textarea, select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #cbd5e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            color: var(--text-dark);
-            box-sizing: border-box;
-            background-color: #f8fafc;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--primary-bg);
-            background-color: #ffffff;
-        }
-
-        .dynamic-city-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .dynamic-city-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #cbd5e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            color: var(--text-dark);
-            box-sizing: border-box;
-            background-color: #f8fafc;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
-
-        .dynamic-city-input:focus {
-            outline: none;
-            border-color: var(--primary-bg);
-            background-color: #ffffff;
-        }
-
-        .btn-submit {
-            color: white;
-            padding: 14px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1.05rem;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .btn-disabled {
-            background: #cbd5e0 !important;
-            color: #718096 !important;
-            cursor: not-allowed !important;
-            box-shadow: none !important;
-            transform: none !important;
-        }
-
-        .btn-active {
-            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%) !important;
-            box-shadow: 0 4px 14px rgba(56, 161, 105, 0.3);
-        }
-
-        .btn-active:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(56, 161, 105, 0.4);
-        }
-
-        .nav-container {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .profile-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-trigger {
-            background: none;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-            outline: none;
-        }
-
-        .nav-avatar, .avatar-fallback {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--accent-color);
-            box-sizing: border-box;
-            transition: transform 0.2s;
-        }
-
-        .avatar-fallback {
-            background-color: var(--primary-bg);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: #ffffff;
-            min-width: 250px;
-            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.15);
-            border-radius: 10px;
-            z-index: 1000;
-            margin-top: 10px;
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            text-align: left;
-        }
-
-        .dropdown-header {
-            padding: 16px;
-            background: #f8fafc;
-        }
-
-        .dropdown-header strong {
-            color: var(--primary-bg);
-            font-size: 0.95rem;
-        }
-
-        .user-email {
-            display: block;
-            font-size: 0.8rem;
-            color: #718096;
-            margin-top: 2px;
-            word-break: break-all;
-        }
-
-        .menu-item {
-            color: var(--text-dark);
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .menu-item:hover {
-            background-color: #f1f5f9;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body>
+<body class="bg-slate-950 font-sans antialiased text-slate-200 min-h-screen flex flex-col justify-between">
 
-<div class="container">
-    <header>
-        <h1>ChamberPipeline</h1>
-        <div class="nav-container">
-            {% if is_authenticated_user %}
-                <div class="profile-dropdown">
-                    <button class="dropdown-trigger" onclick="toggleDropdown(event)">
-                        {% if avatar_url %}
-                            <img src="{{ avatar_url }}" alt="Profile" class="nav-avatar">
-                        {% else %}
-                            <div class="avatar-fallback">{{ username|slice:":2"|upper }}</div>
-                        {% endif %}
-                    </button>
-                    
-                    <div id="profileMenu" class="dropdown-content">
-                        <div class="dropdown-header">
-                            <strong>{{ username }}</strong>
-                            <span class="user-email">{{ user_email }}</span>
-                        </div>
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;">
-                        <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
-                        <a href="{% url 'leads_list' %}" class="menu-item">📋 Go to Leads Page</a>
-                        <a href="{% url 'request_custom_scrape' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">🎯 Request Custom Scrape</a>
-                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;">
-                        <a href="{% url 'logout' %}" class="menu-item" style="color: #718096;">🚪 Logout</a>
+    <div class="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8 w-full">
+        
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-extrabold text-white tracking-tight">Request Custom Target Scrape</h1>
+            <p class="text-sm text-slate-400 mt-2">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
+            
+            <div class="bg-emerald-950/30 border border-emerald-500/20 rounded-xl p-4 mb-6 text-sm text-emerald-400">
+                🔒 <strong>Custom Extraction Rate:</strong> $8.00 flat per directory. <br>
+                <span class="text-xs text-slate-400">Note: If our active inventory framework determines your target territory has already been cataloged, your order parameters will automatically transition to an Instant Directory Unlock ($9.99) so you can bypass standard pipeline queues and download the data right away.</span>
+            </div>
+
+            <form method="POST" action="{% url 'request_custom_scrape' %}">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Contact Email Address</label>
+                        <input type="email" name="user_email" id="clientEmail" required value="{{ user_email }}"
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Number of Target Territories</label>
+                        <select name="chambers_count" id="clientBatchSize" required onchange="evaluateClientButton()"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 cursor-pointer transition">
+                            <option value="1">1 Target Location ($8.00)</option>
+                            <option value="2">2 Target Locations ($16.00)</option>
+                            <option value="3">3 Target Locations ($24.00)</option>
+                            <option value="4">4 Target Locations ($32.00)</option>
+                            <option value="5">5 Target Locations (🔥 Buy 4 Get 1 Free! - $32.00)</option>
+                        </select>
                     </div>
                 </div>
-            {% else %}
-                <a href="{% url 'home' %}" class="menu-item">Home</a>
-            {% endif %}
-        </div>
-    </header>
 
-    <h2 style="color: var(--primary-bg); text-align: center; margin-top: 10px; margin-bottom: 5px; font-size: 1.8rem; font-weight: 700;">Request Custom Target Scrape</h2>
-    <p class="subtitle">Tell us which regional business indexing coordinates to target. We extract, clean, and deliver the unmasked high-fidelity leads directly to your workspace dashboard.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">State Focus</label>
+                        <select name="state" id="clientStateSelect" required onchange="evaluateClientButton()"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/50 cursor-pointer transition">
+                            <option value="GA">Georgia</option>
+                            <option value="">Select a State...</option>
+                            <option value="AL">Alabama</option>
+                            <option value="AK">Alaska</option>
+                            <option value="AZ">Arizona</option>
+                            <option value="AR">Arkansas</option>
+                            <option value="CA">California</option>
+                            <option value="CO">Colorado</option>
+                            <option value="CT">Connecticut</option>
+                            <option value="DE">Delaware</option>
+                            <option value="FL">Florida</option>
+                            </select>
+                    </div>
 
-    <div class="alert alert-success text-center mb-4" style="background-color: rgba(56, 161, 105, 0.05); border: 1px solid #38a169; border-radius: 8px; padding: 14px; margin-bottom: 25px; box-sizing: border-box;">
-        <span style="font-weight: 700; color: #2f855a; font-size: 1rem;">🔒 Custom Extraction Rate: $8.00 flat per directory</span>
-        <div style="color: #718096; font-size: 0.85rem; margin-top: 5px; font-style: italic; font-weight: 500; line-height: 1.4;">
-            Note: If our active inventory framework determines your target territory has already been cataloged, your order parameters will automatically transition to an <strong>Instant Directory Unlock ($9.99)</strong> so you can bypass standard pipeline queues and download the data right away.
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">City or Territory Regions</label>
+                        <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="kennesaw"
+                               oninput="evaluateClientButton()"
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm font-mono placeholder-slate-700 focus:outline-none focus:border-indigo-500/50 transition">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800">
+                    <button type="submit" id="clientSubmitBtn" disabled
+                            class="w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm transition duration-150">
+                        Fill Required Target Locations to Activate Checkout
+                    </button>
+                </div>
+            </form>
+
         </div>
     </div>
 
-    <form id="customScrapeForm" method="POST" action="{% url 'request_custom_scrape' %}" novalidate>
-        {% csrf_token %}
-        
-        {% if form.errors %}
-            <div style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 18px; border-radius: 8px; margin-bottom: 25px; font-size: 0.95rem; box-sizing: border-box;">
-                <strong style="display: block; margin-bottom: 8px;">⚠️ Form Validation Blocked:</strong>
-                <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
-                {% for field in form %}
-                    {% for error in field.errors %}
-                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                    {% endfor %}
-                {% endfor %}
-                {% for error in form.non_field_errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label for="{{ form.user_email.id_for_label }}">Contact Email Address</label>
-                {{ form.user_email }}
-            </div>
-            <div class="form-group">
-                <label for="{{ form.chambers_count.id_for_label }}">Number of Target Territories</label>
-                {{ form.chambers_count }}
-            </div>
-        </div>
+    <script>
+        // 💡 FIXED: Flipped filter configuration so fallback evaluates before character mapping marks it safe
+        const catalogedCities = {{ active_cities_json|default:"[]"|safe }};
 
-        <div class="form-row" id="location-row-container">
-            <div class="form-group" id="state-group-box">
-                <label for="{{ form.state.id_for_label }}">State Focus</label>
-                {{ form.state }}
-            </div>
-            
-            <div class="form-group" id="city-group-box">
-                <label id="dynamic-city-label">Target City Regions</label>
+        function evaluateClientButton() {
+            const cityInput = document.getElementById("clientCityInput");
+            const stateSelect = document.getElementById("clientStateSelect");
+            const batchSelect = document.getElementById("clientBatchSize");
+            const submitBtn = document.getElementById("clientSubmitBtn");
+
+            const currentCityTrimmed = cityInput.value.trim().toLowerCase();
+            const isStateSelected = stateSelect && stateSelect.value !== "";
+            const isCityFilled = currentCityTrimmed !== "";
+
+            if (isStateSelected && isCityFilled) {
+                submitBtn.disabled = false;
                 
-                <div style="display: none !important;">
-                    {{ form.city_or_region }}
-                </div>
+                // DYNAMIC PRICE INTERCEPT LAYER
+                if (catalogedCities.includes(currentCityTrimmed)) {
+                    // Match found inside database sets!
+                    submitBtn.className = "w-full bg-amber-600 hover:bg-amber-500 text-white font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5";
+                    submitBtn.innerText = "⚡ Instant Catalog Unlock Confirmed: Access Database ($9.99)";
+                } else {
+                    // Fresh on-demand target region routing
+                    const selectedQty = parseInt(batchSelect.value) || 1;
+                    let targetPrice = selectedQty * 8;
+                    if (selectedQty === 5) targetPrice = 32; // Tier pricing override
 
-                <div id="dynamicCityInputsContainer" class="dynamic-city-wrapper"></div>
-                
-                <div id="directory-alert" style="display: none; margin-top: 8px; padding: 10px 14px; background-color: rgba(43, 108, 176, 0.08); border-left: 4px solid #2b6cb0; border-radius: 6px; font-size: 0.85rem; color: #2d3748; line-height: 1.4; box-sizing: border-box;">
-                    🎯 <strong>Instant Download Available:</strong> Our data engine has already scraped this specific region! Submitting this form will securely skip production delays and route your session to the catalog interface to unlock the file immediately for <strong>$9.99</strong>.
-                </div>
-            </div>
-        </div>
-
-        <button type="submit" id="submit-btn" class="btn-submit btn-disabled" disabled>Fill Required Target Locations to Activate Checkout</button>
-    </form>
-</div>
-
-<script>
-function toggleDropdown(event) {
-    event.stopPropagation();
-    var menu = document.getElementById("profileMenu");
-    if (menu.style.display === "block") {
-        menu.style.display = "none";
-    } else {
-        menu.style.display = "block";
-    }
-}
-
-window.onclick = function(event) {
-    var menu = document.getElementById("profileMenu");
-    if (menu && menu.style.display === "block") {
-        if (!event.target.closest('.profile-dropdown')) {
-            menu.style.display = "none";
-        }
-    }
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-    const hiddenNativeCityInput = document.getElementById("id_city_or_region");
-    const quantitySelect = document.getElementById("id_chambers_count");
-    const stateSelect = document.getElementById("id_state");
-    const submitBtn = document.getElementById("submit-btn");
-    const alertBox = document.getElementById("directory-alert");
-    const dynamicInputsContainer = document.getElementById("dynamicCityInputsContainer");
-    const dynamicCityLabel = document.getElementById("dynamic-city-label");
-    const locationRowContainer = document.getElementById("location-row-container");
-    const cityGroupBox = document.getElementById("city-group-box");
-    const scrapeForm = document.getElementById("customScrapeForm");
-    
-    let cachedCities = [];
-
-    // Pre-cache city indexes for instant verification matches
-    fetch("{% url 'active_cities_api' %}")
-        .then(response => response.json())
-        .then(data => { cachedCities = data.active_cities; })
-        .catch(err => console.error("Database directory coordinates sync error:", err));
-
-    function syncAndCheckFulfillment() {
-        const customInputs = document.querySelectorAll(".dynamic-city-target");
-        let allFilled = true;
-        let anyMatchFound = false;
-
-        customInputs.forEach(input => {
-            const val = input.value.trim().toLowerCase();
-            if (!val) {
-                allFilled = false;
-            } else if (cachedCities.some(city => val.includes(city) || city.includes(val))) {
-                anyMatchFound = true;
+                    submitBtn.className = "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl shadow-lg cursor-pointer text-center text-sm transition duration-150 transform hover:-translate-y-0.5";
+                    submitBtn.innerText = `🚀 Ignite Live Preview Sequence: Extract Dataset ($${targetPrice}.00)`;
+                }
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.className = "w-full bg-slate-800 opacity-50 cursor-not-allowed text-slate-500 font-mono font-bold uppercase tracking-wider py-4 px-4 rounded-xl text-center text-sm";
+                submitBtn.innerText = "Fill Required Target Locations to Activate Checkout";
             }
-        });
-
-        if (customInputs.length === 1 && anyMatchFound) {
-            alertBox.style.display = "block";
-        } else {
-            alertBox.style.display = "none";
         }
 
-        const stateSelected = stateSelect && stateSelect.value !== "";
-
-        if (allFilled && customInputs.length > 0 && stateSelected) {
-            submitBtn.disabled = false;
-            submitBtn.classList.remove("btn-disabled");
-            submitBtn.classList.add("btn-active");
-            
-            const qty = parseInt(quantitySelect.value) || 1;
-            let currentCost = qty * 8;
-            if (qty === 5) currentCost = 32;
-            submitBtn.textContent = `Submit Request ($${currentCost}.00)`;
-        } else {
-            submitBtn.disabled = true;
-            submitBtn.classList.remove("btn-active");
-            submitBtn.classList.add("btn-disabled");
-            submitBtn.textContent = "Fill Required Target Locations to Activate Checkout";
-        }
-    }
-
-    function renderDynamicFieldsLayout() {
-        const qty = parseInt(quantitySelect.value) || 1;
-        dynamicInputsContainer.innerHTML = ""; 
-
-        if (qty > 1) {
-            locationRowContainer.style.display = "flex";
-            locationRowContainer.style.flexDirection = "column";
-            cityGroupBox.style.gridColumn = "span 2";
-            dynamicCityLabel.innerHTML = `Target City Regions <span style="color: #718096; font-size: 0.85rem; font-weight: normal;">(Please specify your ${qty} choices below)</span>`;
-        } else {
-            locationRowContainer.style.display = "grid";
-            locationRowContainer.style.gridTemplateColumns = "1fr 1fr";
-            cityGroupBox.style.gridColumn = "span 1";
-            dynamicCityLabel.textContent = "City or Territory Regions";
-        }
-
-        for (let i = 1; i <= qty; i++) {
-            const input = document.createElement("input");
-            input.type = "text";
-            input.required = false; // 🛠️ FIXED: Removed dynamic requirement loops to clear the browser error icon completely
-            input.className = "dynamic-city-target dynamic-city-input";
-            input.placeholder = `Location Target Box #${i} (e.g., Denver)`;
-            input.addEventListener("input", syncAndCheckFulfillment);
-            dynamicInputsContainer.appendChild(input);
-        }
-
-        syncAndCheckFulfillment();
-    }
-
-    if (scrapeForm) {
-        scrapeForm.addEventListener("submit", function(e) {
-            const customInputs = document.querySelectorAll(".dynamic-city-target");
-            const finalValues = [];
-            
-            customInputs.forEach(input => {
-                if (input.value.trim()) finalValues.push(input.value.trim());
-            });
-
-            if (hiddenNativeCityInput) {
-                hiddenNativeCityInput.value = finalValues.join(", ");
-                console.log("Stamping data bucket payload:", hiddenNativeCityInput.value);
-            }
-        });
-    }
-
-    if (quantitySelect && stateSelect) {
-        quantitySelect.addEventListener("change", renderDynamicFieldsLayout);
-        stateSelect.addEventListener("change", syncAndCheckFulfillment);
-        renderDynamicFieldsLayout(); 
-    }
-});
-</script>
-
-</script>
-
+        // Initialize button metrics on layout baseline entry sequence
+        document.addEventListener("DOMContentLoaded", evaluateClientButton);
+    </script>
 </body>
 </html>

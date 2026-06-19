@@ -113,12 +113,17 @@ def request_custom_scrape(request):
             initial_data['user_email'] = request.user.email
         form = ChamberRequestForm(initial=initial_data)
 
+    # 💡 LIVE INVENTORY LOOKUP: Fetch cataloged city entries to pass down to JS array scanner
+    active_cities = list(ChamberDirectory.objects.filter(is_active=True).values_list('city_or_region', flat=True).distinct())
+    cleaned_active_cities = [str(c).strip().lower() for c in active_cities if c]
+
     user_context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
         'username': request.user.username if request.user.is_authenticated else "",
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None,
         'form': form,
+        'active_cities_json': cleaned_active_cities,  # Safe context placement
     }
     return render(request, 'leads/request_form.html', user_context)
 

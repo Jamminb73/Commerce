@@ -189,6 +189,7 @@ class Command(BaseCommand):
 
     def crawl_for_directory_target(self, page, base_url):
         """🕷️ Scout Layer: Crawls internal navigation menus to jump straight to team/staff pages."""
+        self.stdout.write("🕷️ [SCOUT]: Sifting internal nav mapping layout for contact targets...")
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(3)
@@ -196,17 +197,32 @@ class Command(BaseCommand):
             target_page = page.evaluate('''() => {
                 let anchors = Array.from(document.querySelectorAll('a'));
                 let keywords = ['staff', 'team', 'about-us', 'directory', 'about/staff', 'about/team', 'contact-us'];
+                
+                // Helper to ensure a link isn't a dead-end JavaScript trigger or empty hash
+                let isValidLink = (a) => {
+                    let hrefAttr = a.getAttribute('href') || '';
+                    return hrefAttr.trim() !== '' && 
+                           !hrefAttr.startsWith('#') && 
+                           !hrefAttr.startsWith('javascript:') && 
+                           a.href && 
+                           a.href.startsWith('http');
+                };
+
+                // First pass: Check link text strings matches
                 for (let kw of keywords) {
-                    let match = anchors.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(kw));
-                    if (match && match.href && match.href.startsWith('http')) return match.href;
+                    let match = anchors.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(kw) && isValidLink(a));
+                    if (match) return match.href;
                 }
+                
+                // Second pass: Sift through raw href strings attributes
                 for (let kw of keywords) {
-                    let match = anchors.find(a => (a.getAttribute('href') || '').toLowerCase().includes(kw));
-                    if (match && match.href && match.href.startsWith('http')) return match.href;
+                    let match = anchors.find(a => (a.getAttribute('href') || '').toLowerCase().includes(kw) && isValidLink(a));
+                    if (match) return match.href;
                 }
                 return null;
             }''')
             if target_page:
+                self.stdout.write(f"🎯 [SCOUT]: Automated routing locked onto index page: {target_page}")
                 return target_page
         except Exception as e:
             self.stdout.write(f"⚠️ [SCOUT]: Navigation map scan incomplete: {e}")

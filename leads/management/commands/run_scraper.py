@@ -10,6 +10,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 from django.core.management.base import BaseCommand
 from playwright.sync_api import sync_playwright
 from leads.models import ChamberLead, ChamberDirectory 
+from nameparser import HumanName
 
 # 🛡️ THE HIGH-FIDELITY EXTRACTION FILTER MATRIX
 BLACKLIST_KEYWORDS = (
@@ -23,51 +24,72 @@ BLACKLIST_KEYWORDS = (
 # Hard exclusion patterns for structural mailboxes
 GENERIC_BOXES = ('info@', 'support@', 'admin@', 'marketing@', 'contact@', 'webmaster@', 'help@', 'membership@', 'events@', 'join@', 'chamber@', 'frontdesk@', 'sales@')
 
+# Strict keywords to instantly identify and drop corporate entities, initiatives, or B2B program titles
+ORGANIZATION_KEYWORDS = (
+    'business', 'center', 'visitor', 'council', 'service', 'chamber', 'association',
+    'alliance', 'bureau', 'corporation', 'company', 'inc.', 'llc', 'group', 'dept',
+    'department', 'practices', 'committee', 'board', 'foundation', 'development',
+    'partnership', 'network', 'agency', 'institute', 'society', 'club'
+)
+
 
 def is_valid_human_name(name_str):
     """
-    Validates if a string is structured like a reasonable human name.
-    Filters out navigation text, layout structures, and lone words.
+    Rigorously validates if a string is structured like an actual human name.
+    Uses the nameparser library coupled with strict structural guardrails.
     """
     if not name_str:
         return False
         
     clean_str = name_str.strip()
     
-    # Quick structural check: reject long strings, empty strings, or strings with emails
+    # Threshold check: Names aren't tiny, massive, and don't contain emails
     if len(clean_str) < 3 or len(clean_str) > 35 or "@" in clean_str:
         return False
         
-    # Block structural patterns or common single words acting as headers
+    # Drop known layout strings instantly
     lower_str = clean_str.lower()
     if lower_str in ['read bio', 'view profile', 'staff', 'team', 'directory', 'board', 'executive', 'members', 'home']:
         return False
         
+    # 🛡️ CATCH-ALL GATEWAY: Prevent corporate/initiative directory pollution (e.g., "Certifiably Green Denver Business")
+    if any(keyword in lower_str for keyword in ORGANIZATION_KEYWORDS):
+        return False
+
     # Check word counts: Human directory names are typically 2 to 3 words
     words = clean_str.split()
     if len(words) < 2 or len(words) > 3:
         return False
         
-    # Regex check: Ensure the string only contains valid alphabetic characters, spaces, hyphens, and apostrophes
+    # Basic character sanitization gate
     if not re.match(r"^[a-zA-Z\s\.\-\'’]+$", clean_str):
+        return False
+
+    # 💎 PARSER LAYER: Let nameparser dissect the layout mechanics
+    try:
+        parsed = HumanName(clean_str)
+        
+        # A valid directory name must have at least a first name and a last name
+        if not parsed.first or not parsed.last:
+            return False
+            
+        # Catch instances where structural titles mimic human configurations
+        if len(words) == 3 and not parsed.middle and parsed.title:
+            return False
+            
+    except Exception:
         return False
         
     return True
 
 
 def parse_name(raw_name):
-    """Splits full names cleanly into First and Last, handling middle initials."""
+    """Splits full names cleanly into First and Last using nameparser properties."""
     if not is_valid_human_name(raw_name):
         return "", ""
 
-    parts = raw_name.strip().split()
-    if len(parts) == 1:
-        return parts[0], ""
-    elif len(parts) == 2:
-        return parts[0], parts[1]
-    else:
-        # Gracefully handle middle initials/names by mapping to First and Last bounds
-        return parts[0], parts[-1]
+    parsed = HumanName(raw_name.strip())
+    return parsed.first.strip(), parsed.last.strip()
 
 
 class Command(BaseCommand):
@@ -198,7 +220,6 @@ class Command(BaseCommand):
                 let anchors = Array.from(document.querySelectorAll('a'));
                 let keywords = ['staff', 'team', 'about-us', 'directory', 'about/staff', 'about/team', 'contact-us'];
                 
-                // Helper to ensure a link isn't a dead-end JavaScript trigger or empty hash
                 let isValidLink = (a) => {
                     let hrefAttr = a.getAttribute('href') || '';
                     return hrefAttr.trim() !== '' && 
@@ -208,13 +229,11 @@ class Command(BaseCommand):
                            a.href.startsWith('http');
                 };
 
-                // First pass: Check link text strings matches
                 for (let kw of keywords) {
                     let match = anchors.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(kw) && isValidLink(a));
                     if (match) return match.href;
                 }
                 
-                // Second pass: Sift through raw href strings attributes
                 for (let kw of keywords) {
                     let match = anchors.find(a => (a.getAttribute('href') || '').toLowerCase().includes(kw) && isValidLink(a));
                     if (match) return match.href;
@@ -267,7 +286,6 @@ class Command(BaseCommand):
                     let data = [];
                     let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
                     
-                    // Step 1: Locate high-probability DOM wrappers / Profile Card components
                     let containers = document.querySelectorAll(
                         'div[class*="staff"], div[class*="team"], div[class*="member"], div[class*="card"], ' +
                         'div[class*="profile"], tr, div[style*="grid"], div[class*="directory-item"], article'
@@ -276,13 +294,11 @@ class Command(BaseCommand):
                     let checkedContainers = new Set();
 
                     containers.forEach(container => {
-                        // Minimize nested duplicate execution sweeps
                         if (container.querySelectorAll('div[class*="card"], tr').length > 1) return;
                         
                         let htmlContext = container.innerHTML || '';
                         let textContext = (container.innerText || container.textContent || '').trim();
                         
-                        // Look for a valid mailbox signature nested explicitly within this element bundle
                         let emailMatch = textContext.match(emailRegex);
                         let mailtoMatch = container.querySelector('a[href^="mailto:"]');
                         
@@ -294,11 +310,9 @@ class Command(BaseCommand):
                                 email = emailMatch[0].toLowerCase().trim();
                             }
 
-                            // Immediate Top-Level Gateway Mailbox Exclusions
                             let systemBoxes = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "membership@", "marketing@", "contact@", "join@"];
                             if (!email || systemBoxes.some(box => email.includes(box))) return;
 
-                            // Extract text rows explicitly confined within this micro-scoped container
                             let textRows = textContext.split('\\n')
                                 .map(r => r.trim())
                                 .filter(r => r.length > 1 && !emailRegex.test(r) && !/\\d{3}/.test(r));
@@ -317,19 +331,16 @@ class Command(BaseCommand):
                         }
                     });
 
-                    // Fallback Pass: If structural cards aren't matched, parse clean standard layout tables/headers
                     if (data.length === 0) {
                         let headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, strong'));
                         headings.forEach(h => {
                             let txt = (h.innerText || h.textContent || '').trim();
-                            // Quick validation gate inside DOM evaluation context
                             if (txt && txt.length > 3 && txt.length < 30 && /^[a-zA-Z\\s\\.\\-\\'’]+$/.test(txt)) {
                                 let words = txt.split(/\\s+/);
                                 if (words.length >= 2 && words.length <= 3) {
-                                    // Walk next elements to capture title properties safely
                                     let nextEl = h.nextElementSibling;
                                     let nextTxt = nextEl ? (nextEl.innerText || nextEl.textContent || '').trim() : '';
-                                    if (nextTxt && nextTxt.length > 3 && nextTxt.length < 60 && !nextTxt.includes('\\n')) {
+                                    if(nextTxt && nextTxt.length > 3 && nextTxt.length < 60 && !nextTxt.includes('\\n')) {
                                         data.push({ rawName: txt, title: nextTxt, email: "" });
                                     }
                                 }
@@ -365,11 +376,10 @@ class Command(BaseCommand):
                     if any(bad in lower_name for bad in ["chamber", "home", "about", "events", "contact", "join", "sign up", "terms", "privacy", "staff"]):
                         continue
 
-                    # Cleanse out email duplications embedded inside titles
                     if email in title:
                         title = title.replace(email, "").strip()
 
-                    # Run rigorous Human Name validation patterns
+                    # Run rigorous nameparser validation mechanics
                     first_name, last_name = parse_name(raw_name)
                     full_name = f"{first_name} {last_name}".strip()
                     
@@ -382,13 +392,11 @@ class Command(BaseCommand):
                     if not cleaned_title or cleaned_title.lower() in ["read bio", "view profile", "bio"]:
                         cleaned_title = "Chamber Executive"
 
-                    # 💎 FINESSE INTERPOLATION LAYER (If email wasn't harvested straight out of DOM container)
                     if not email:
                         first_initial = first_name[0].lower()
                         clean_last = last_name.lower().replace(" ", "").replace("-", "")
                         email = f"{first_initial}{clean_last}@{base_domain}"
 
-                    # Re-verify interpolation results against catch-all gates
                     if any(email.lower().startswith(box) for box in GENERIC_BOXES):
                         continue
 

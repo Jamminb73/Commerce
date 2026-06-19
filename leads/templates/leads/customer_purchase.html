@@ -26,28 +26,37 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1100px;
             width: 100%;
             background: white;
             padding: 40px;
             border-radius: 16px;
             box-shadow: var(--card-shadow);
+            box-sizing: border-box;
+            display: block;
         }
 
         header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
             border-bottom: 2px solid #e2e8f0;
             padding-bottom: 20px;
             margin-bottom: 25px;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         header h1 {
             color: var(--primary-bg);
             margin: 0;
-            font-size: 1.8rem;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
 
         .status-badge {
@@ -73,35 +82,105 @@
             color: #22543d;
         }
 
-        /* Nav layout next to badge */
-        .inline-nav {
-            display: inline-flex;
+        /* --- Profile Dropdown Layout Styles --- */
+        .nav-container {
+            display: flex;
             align-items: center;
-            gap: 10px;
-            margin-left: 6px;
+            gap: 20px;
         }
 
-        .btn-browse-catalog {
-            background: #ffffff;
-            color: #2b6cb0;
-            border: 1px solid #cbd5e0;
-            padding: 5px 14px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: all 0.2s ease;
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-trigger {
+            background: none;
+            border: none;
+            padding: 0;
             cursor: pointer;
+            outline: none;
         }
-        .btn-browse-catalog:hover {
-            background: #2b6cb0;
-            color: #ffffff;
-            border-color: #2b6cb0;
+
+        .nav-avatar, .avatar-fallback {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+            box-sizing: border-box;
+            transition: transform 0.2s;
         }
+
+        .nav-avatar:hover, .avatar-fallback:hover {
+            transform: scale(1.05);
+        }
+
+        .avatar-fallback {
+            background-color: var(--primary-bg);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #ffffff;
+            min-width: 250px;
+            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            z-index: 1000;
+            margin-top: 10px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            text-align: left;
+        }
+
+        .dropdown-header {
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .dropdown-header strong {
+            color: var(--primary-bg);
+            font-size: 0.95rem;
+        }
+
+        .user-email {
+            display: block;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 2px;
+            word-break: break-all;
+        }
+
+        .dropdown-content hr {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 0;
+        }
+
+        .menu-item {
+            color: var(--text-dark);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .menu-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .text-warning { color: #d97706 !important; }
+        .text-danger { color: #dc2626 !important; }
 
         .grid-layout {
             display: grid;
@@ -178,12 +257,37 @@
     </div>
 
     <header>
-        <h1>Workspace Pipeline: {{ city_or_region|title }}</h1>
-        <div id="status-display" class="status-badge status-scraping">Initializing</div>
+        <div class="header-left">
+            <h1>Workspace Pipeline: {{ city_or_region|title }}</h1>
+            <div id="status-display" class="status-badge status-scraping">Initializing</div>
+        </div>
         
-        <div class="inline-nav">
-            <a href="{% url 'home' %}" class="btn-browse-catalog">🏠 Home</a>
-            <a href="{% url 'leads_list' %}" class="btn-browse-catalog">📋 Leads Page</a>
+        <div class="nav-container">
+            <div class="profile-dropdown">
+                <button class="dropdown-trigger" onclick="toggleDropdown(event)">
+                    {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="Profile" class="nav-avatar">
+                    {% else %}
+                        <div class="avatar-fallback">{{ request.user.username|slice:":2"|upper }}</div>
+                    {% endif %}
+                </button>
+                
+                <div id="profileMenu" class="dropdown-content">
+                    <div class="dropdown-header">
+                        <strong>{{ request.user.username }}</strong>
+                        <span class="user-email">{{ request.user.email }}</span>
+                    </div>
+                    <hr>
+                    <a href="{% url 'home' %}" class="menu-item">🏠 Home</a>
+                    <a href="{% url 'leads_list' %}" class="menu-item" style="background-color: #f1f5f9; font-weight: 600;">📋 Go to Leads Page</a>
+                    <a href="{% url 'request_custom_scrape' %}" class="menu-item">🎯 Request Custom Scrape</a>
+                    {% if request.user.is_staff %}
+                        <a href="{% url 'admin:index' %}" class="menu-item text-warning">🛠️ Django Admin</a>
+                    {% endif %}
+                    <hr>
+                    <a href="{% url 'logout' %}" class="menu-item text-danger">🚪 Logout</a>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -255,6 +359,25 @@
     const clientCompletionDeck = document.getElementById("clientCompletionDeck");
     const clientFailureDeck = document.getElementById("clientFailureDeck");
     const previewWrapper = document.getElementById("preview-rows-wrapper");
+
+    function toggleDropdown(event) {
+        event.stopPropagation();
+        var menu = document.getElementById("profileMenu");
+        if (menu.style.display === "block") {
+            menu.style.display = "none";
+        } else {
+            menu.style.display = "block";
+        }
+    }
+
+    window.onclick = function(event) {
+        var menu = document.getElementById("profileMenu");
+        if (menu && menu.style.display === "block") {
+            if (!event.target.closest('.profile-dropdown')) {
+                menu.style.display = "none";
+            }
+        }
+    }
 
     function pollPipelineTelemetry() {
         fetch(`/workspace/monitor/api/${requestId}/`)

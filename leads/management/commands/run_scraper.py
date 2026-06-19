@@ -52,7 +52,7 @@ def is_valid_human_name(name_str):
     if lower_str in ['read bio', 'view profile', 'staff', 'team', 'directory', 'board', 'executive', 'members', 'home']:
         return False
         
-    # 🛡️ CATCH-ALL GATEWAY: Prevent corporate/initiative directory pollution (e.g., "Certifiably Green Denver Business")
+    # 🛡️ CATCH-ALL GATEWAY: Prevent corporate/initiative directory pollution
     if any(keyword in lower_str for keyword in ORGANIZATION_KEYWORDS):
         return False
 
@@ -93,7 +93,7 @@ def parse_name(raw_name):
 
 
 class Command(BaseCommand):
-    help = 'Runs the Playwright proximity scraper to collect Chamber leads directly into the database.'
+    help = 'Runs the Playwright proximity scraper to collect Chamber leads into a staged payload schema.'
 
     def add_arguments(self, parser):
         parser.add_argument('--url', type=str, help='Target URL to scrape directly')
@@ -139,11 +139,10 @@ class Command(BaseCommand):
                 self.refactored_chamber_scoper(url, name, directory_obj)
                 time.sleep(random.uniform(2.0, 4.0))
 
-        self.stdout.write(self.style.SUCCESS("\n🎉 Done! Proximity database sync completely finished."))
+        self.stdout.write(self.style.SUCCESS("\n🎉 Done! Proximity staging extraction finished."))
 
     def discover_chamber_url(self, page, google_url):
         """🔍 Sifter Layer: Opens Google, handles consent gates, and pulls back organic results."""
-        self.stdout.write("🔍 [DISCOVERY]: Intercepting fallback URL... Scanning Google Search nodes...")
         try:
             page.goto(google_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(3)
@@ -162,7 +161,6 @@ class Command(BaseCommand):
             }''')
             
             if consent_handled:
-                self.stdout.write("🛡️ [DISCOVERY]: Bypassed Google Cookie Gate. Waiting for search canvas re-render...")
                 time.sleep(3)
 
             links = page.evaluate('''() => {
@@ -211,7 +209,6 @@ class Command(BaseCommand):
 
     def crawl_for_directory_target(self, page, base_url):
         """🕷️ Scout Layer: Crawls internal navigation menus to jump straight to team/staff pages."""
-        self.stdout.write("🕷️ [SCOUT]: Sifting internal nav mapping layout for contact targets...")
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(3)
@@ -241,7 +238,6 @@ class Command(BaseCommand):
                 return null;
             }''')
             if target_page:
-                self.stdout.write(f"🎯 [SCOUT]: Automated routing locked onto index page: {target_page}")
                 return target_page
         except Exception as e:
             self.stdout.write(f"⚠️ [SCOUT]: Navigation map scan incomplete: {e}")
@@ -355,7 +351,7 @@ class Command(BaseCommand):
                 base_domain = parsed_uri.netloc.replace('www.', '')
 
                 seen_names = set()
-                records_saved = 0
+                staged_json_payload = []
 
                 for lead in extracted_leads:
                     raw_name = lead['rawName'].strip()
@@ -366,7 +362,6 @@ class Command(BaseCommand):
                     lower_title = title.lower()
                     lower_email = email.lower()
 
-                    # 🛡️ PIPELINE GATEWAY FILTERS: Drop system keywords or structural artifacts
                     if any(keyword in lower_name or keyword in lower_title for keyword in BLACKLIST_KEYWORDS):
                         continue
 
@@ -379,7 +374,6 @@ class Command(BaseCommand):
                     if email in title:
                         title = title.replace(email, "").strip()
 
-                    # Run rigorous nameparser validation mechanics
                     first_name, last_name = parse_name(raw_name)
                     full_name = f"{first_name} {last_name}".strip()
                     
@@ -400,24 +394,24 @@ class Command(BaseCommand):
                     if any(email.lower().startswith(box) for box in GENERIC_BOXES):
                         continue
 
-                    # Database Core Upsert Engine
-                    lead_obj, created = ChamberLead.objects.update_or_create(
-                        email=email,
-                        defaults={
-                            'directory': directory_obj,
-                            'first_name': first_name.strip().title(),
-                            'last_name': last_name.strip().title(),
-                            'title': cleaned_title,
-                            'organization': org_name,
-                            'chamber': f"{org_name} Asset"
-                        }
-                    )
+                    # 📦 ASSEMBLE IN-MEMORY RECORD FOR TRANSIENT STORAGE
+                    staged_json_payload.append({
+                        'first_name': first_name.strip().title(),
+                        'last_name': last_name.strip().title(),
+                        'title': cleaned_title,
+                        'email': email.lower().strip()
+                    })
                     
-                    records_saved += 1
-                    status_msg = "Created candidate" if created else "Updated existing candidate"
-                    self.stdout.write(f"   🎯 {status_msg}: {first_name.title()} {last_name.title()} - {cleaned_title} ({email})")
+                    self.stdout.write(f"   ⏳ Staged candidate memory structure: {first_name.title()} {last_name.title()} ({email})")
 
-                if records_saved == 0:
+                # 💎 WRITE TO SECURE JSON STAGING FIELD ON THE DIRECTORY ROW
+                # Assumes your ChamberDirectory model has a JSONField called `staged_leads_data`
+                directory_obj.staged_leads_data = staged_json_payload
+                directory_obj.save()
+                
+                self.stdout.write(self.style.SUCCESS(f"   🔒 Staged {len(staged_json_payload)} temporary lead vectors securely onto directory object model reference."))
+
+                if len(staged_json_payload) == 0:
                     self.stdout.write(self.style.WARNING(f"   ⚠️ Micro-scoping layer returned 0 records for {org_name}."))
 
             except Exception as e:

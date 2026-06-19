@@ -6,9 +6,10 @@ import threading
 import time    # 🧭 REQUIRED: Active background thread throttle module
 import random  # 🧭 REQUIRED: Random value selector generator
 import urllib.parse
+import json
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse  # <-- Imported for secure dynamic reverse routing
+from django.urls import reverse  
 from django.contrib.auth import login, authenticate, logout  
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -20,7 +21,6 @@ from django.core.mail import send_mail
 
 from .models import ChamberLead, ChamberDirectory, ChamberRequest, Order, OrderItem, UserPurchase
 from .forms import ChamberRequestForm  
-# Import your custom Playwright management command directly out of your directory hierarchy
 from leads.management.commands.run_scraper import Command as ScraperCommand
 
 def landing_page(request):
@@ -44,19 +44,16 @@ def request_custom_scrape(request):
         if form.is_valid():
             chamber_request = form.save(commit=False)
             
-            # Intercept: Check if the user is manually requesting a territory that is already active in the store
             requested_city = form.cleaned_data.get('city_or_region', '').strip()
             existing_directory = ChamberDirectory.objects.filter(city_or_region__iexact=requested_city, is_active=True).first()
             
             if existing_directory:
-                # Direct route to instant catalogue fulfillment bypass
                 messages.info(request, f"Good news! {requested_city} data is already cataloged. Transferring to instant unlock portal.")
                 return redirect('create_checkout_session', request_id=existing_directory.id)
             
-            # Dynamic Price String Calculation based on Quantity Tier Selection
             qty = int(form.cleaned_data.get('chambers_count') or 1)
             if qty == 5:
-                total_cost_float = 32.00  # "Buy 4, Get 1 Free" Promo pricing application
+                total_cost_float = 32.00  
             else:
                 total_cost_float = float(qty * 8.00)
                 
@@ -66,12 +63,10 @@ def request_custom_scrape(request):
             if request.user.is_authenticated and not chamber_request.user_email:
                 chamber_request.user_email = request.user.email
                 
-            # Set initial processing parameters for risk-free deployment
             chamber_request.status = 'scraping'
             chamber_request.console_logs = "📡 [SYSTEM]: Initializing risk-free preview data capture sequence...\n"
             chamber_request.save()
             
-            # 🚀 IGNITE BACKGROUND SCRAPER IMMEDIATELY (FREE INITIAL ENTRY)
             threading.Thread(
                 target=run_background_scrape,
                 args=(
@@ -84,7 +79,6 @@ def request_custom_scrape(request):
                 daemon=True
             ).start()
 
-            # Automated Admin Notification Email Dispatch
             try:
                 subject = f"[Live Preview Request] Target Location Tier: {price_string}"
                 message = (
@@ -113,7 +107,6 @@ def request_custom_scrape(request):
             initial_data['user_email'] = request.user.email
         form = ChamberRequestForm(initial=initial_data)
 
-    # 💡 LIVE INVENTORY LOOKUP: Fetch cataloged city entries to pass down to JS array scanner
     active_cities = list(ChamberDirectory.objects.filter(is_active=True).values_list('city_or_region', flat=True).distinct())
     cleaned_active_cities = [str(c).strip().lower() for c in active_cities if c]
 
@@ -123,13 +116,12 @@ def request_custom_scrape(request):
         'username': request.user.username if request.user.is_authenticated else "",
         'avatar_url': getattr(request.user.profile, 'avatar_url', None) if request.user.is_authenticated and hasattr(request.user, 'profile') else None,
         'form': form,
-        'active_cities_json': cleaned_active_cities,  # Safe context placement
+        'active_cities_json': cleaned_active_cities,  
     }
     return render(request, 'leads/request_form.html', user_context)
 
 
 def request_success_view(request):
-    """Simple confirmation wrapper passing core navigation status arrays."""
     context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",
@@ -140,10 +132,6 @@ def request_success_view(request):
 
 
 def leads_list(request):
-    """
-    Displays the list of chamber leads with search queries and regional filtering. 
-    New users see teaser masked rows; paid users see a clean, unmasked workspace.
-    """
     raw_leads = ChamberLead.objects.all().order_by('organization', 'last_name', 'first_name')
     
     search_query = request.GET.get('q', '').strip()
@@ -174,7 +162,6 @@ def leads_list(request):
     has_any_purchases = False
     
     if request.user.is_authenticated:
-        # Check if this specific user session has ever bought any inventory catalog sets
         user_purchases = UserPurchase.objects.filter(user=request.user, directory__isnull=False)
         has_any_purchases = user_purchases.exists()
         
@@ -199,9 +186,6 @@ def leads_list(request):
             is_staff_or_admin
         )
 
-        # 💡 THE INTELLIGENT ROUTER SYSTEM: 
-        # If they own active assets, hide locked rows to give them a pristine dashboard. 
-        # If they are completely new/free tier, append the teaser rows to drive checkout sales.
         if not has_purchased_item and has_any_purchases:
             continue
 
@@ -254,7 +238,6 @@ def leads_list(request):
 
 
 def purchase_directory(request, request_id=0):
-    """Renders the single dynamic catalog checkout menu view platform."""
     active_directories = ChamberDirectory.objects.filter(is_active=True).order_by('name')
     
     context = {
@@ -271,7 +254,6 @@ def purchase_directory(request, request_id=0):
 
 
 def login_view(request):
-    """Authenticates existing users into the application."""
     if request.method == 'POST':
         u_name = request.POST.get('username')
         p_word = request.POST.get('password')
@@ -290,13 +272,11 @@ def login_view(request):
 
 
 def logout_view(request):
-    """Logs out the active user session."""
     logout(request)
     return redirect('home')  
 
 
 def register_view(request):
-    """Handles creating new user accounts securely."""
     if request.method == 'POST':
         honeypot = request.POST.get('hp_email', '')
         if honeypot:
@@ -332,22 +312,15 @@ def register_view(request):
 
 
 def create_checkout_session(request, request_id):
-    """
-    Unified Stripe Checkout Engine with Role-Based Routing.
-    Bypasses billing for Admins, routes regular customers straight to Stripe,
-    and handles dynamic telemetry routing parameters on successful payment.
-    """
     if not request.user.is_authenticated:
         return redirect('login')
 
-    # 🛡️ ROLE-BASED OVERRIDE: If logged in as staff/admin, bypass Stripe completely & execute Track 1
     if request.user.is_staff or request.user.is_superuser:
         scrape_request = get_object_or_404(ChamberRequest, id=request_id)
         scrape_request.status = 'scraping'
         scrape_request.console_logs = "📡 [ADMIN BYPASS]: System superuser authorization confirmed. Bypassing billing gateway...\n"
         scrape_request.save()
         
-        # Instantly launch the background scraper thread inside local context memory
         threading.Thread(
             target=run_background_scrape,
             args=(
@@ -363,13 +336,11 @@ def create_checkout_session(request, request_id):
         messages.success(request, "Admin configuration authenticated. Pipeline execution active.")
         return redirect(f'/purchase/monitor/{scrape_request.id}/')
 
-    # --- STANDARD PRODUCTION STRIPE FLOW FOR REGULAR USERS ---
     try:
         stripe.api_key = settings.STRIPE_SECRET_KEY
         generated_order_id = f"CHB-{uuid.uuid4().hex[:12].upper()}"
         checkout_type = request.GET.get('type', 'directory')
 
-        # --- ROUTE A: CUSTOM ON-DEMAND SCRAPE PIPELINE STAGE ($8.00 base) ---
         if checkout_type == 'custom':
             scrape_request = get_object_or_404(ChamberRequest, id=request_id)
             
@@ -377,8 +348,10 @@ def create_checkout_session(request, request_id):
                 messages.error(request, "Unauthorized data pipeline checkout attempt.")
                 return redirect('leads_list')
 
-            # 🛡️ HIGH-FIDELITY TRACKING GUARDRAIL: Strict filter check against target city identifier
-            leads_found = ChamberLead.objects.filter(directory__city_or_region__iexact=scrape_request.city_or_region).count()
+            # FIX: Pull total memory footprint length from the dynamic field container
+            # instead of querying a database table that we deliberately haven't populated yet.
+            staged_payload = getattr(scrape_request, 'staged_leads_data', None)
+            leads_found = len(staged_payload) if staged_payload else 0
             if leads_found == 0:
                 messages.error(request, "Checkout locked: No verifiable, high-fidelity contact nodes found for this region.")
                 return redirect('customer_monitor_view', request_id=scrape_request.id)
@@ -388,7 +361,7 @@ def create_checkout_session(request, request_id):
             package_description = f"Target Focus: {scrape_request.chamber_name or 'On-Demand Area Operations'}."
             
             if quantity == 5:
-                amount_in_cents = 3200  # "Buy 4, Get 1 Free" Activation 
+                amount_in_cents = 3200  
                 total_paid_float = 32.00
             else:
                 amount_in_cents = quantity * 800  
@@ -401,7 +374,6 @@ def create_checkout_session(request, request_id):
                 is_paid=False
             )
             
-            # 💡 REDIRECT HOME TO PRISTINE LEADS LIST: Webhook will dynamically attach directory maps
             success_url = request.build_absolute_uri('/payment-success/')
             metadata = {
                 'purchase_type': 'custom_scrape',
@@ -409,7 +381,6 @@ def create_checkout_session(request, request_id):
                 'order_id': new_order.order_id
             }
 
-        # --- ROUTE B: CATALOG SINGLE DIRECTORY ACCESS TICKET ($9.99) ---
         else:
             if request_id == 0:
                 first_directory = ChamberDirectory.objects.filter(is_active=True).first()
@@ -488,6 +459,7 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
         log_to_database(f"🗺️ [SYSTEM CORE]: Target batch coordinates parsed: {len(cities)} location nodes found ({', '.join(cities)}).")
 
         created_directory_ids = []
+        total_leads_accumulated = 0
 
         for idx, current_city in enumerate(cities, start=1):
             log_to_database(f"\n📍 [NODE {idx}/{len(cities)}]: Initiating data pipeline sweep for {current_city}, {state.upper()}...")
@@ -510,15 +482,29 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
             if created:
                 created_directory_ids.append(directory_obj.id)
             
-            scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
+            # 🔥 FIX: Capture the raw JSON response payload string directly out of handle() execution
+            raw_json_output = scraper.handle(url=derived_fallback_url, name=derived_chamber_name, state=state)
+            
+            try:
+                if raw_json_output:
+                    parsed_manifest = json.loads(raw_json_output)
+                    # Track total memory structures parsed to verify extraction yields
+                    for entry_name, data_block in parsed_manifest.items():
+                        staged_leads = data_block.get('leads', [])
+                        total_leads_accumulated += len(staged_leads)
+                        
+                        # Cache the memory leads dictionary straight onto the ChamberDirectory rows securely
+                        directory_obj.staged_leads_data = staged_leads
+                        directory_obj.save()
+            except Exception as json_err:
+                log_to_database(f"⚠️ [PAYLOAD PARSER ERROR]: Structural payload decoding gap: {str(json_err)}")
             
             if idx < len(cities):
                 log_to_database(f"⏳ [NODE {idx} COMPLETE]: Pausing pipeline process matrix for throttle cooldown...")
                 time.sleep(random.uniform(3.0, 5.0))
         
-        # 🛡️ THE CLEANUP INTERCEPT MATRIX: Verify high-fidelity links tied to the exact folder reference 
-        leads_found = ChamberLead.objects.filter(directory_id__in=created_directory_ids).count()
-        if leads_found == 0:
+        # 🔥 FIX: Evaluate total leads cleanly relative to pure transient JSON field array storage metrics
+        if total_leads_accumulated == 0:
             log_to_database("⚠️ [CLEANUP INTERCEPT]: Pipeline yielded zero verified results. Pruning empty directory nodes...")
             ChamberDirectory.objects.filter(id__in=created_directory_ids).delete()
             
@@ -535,10 +521,6 @@ def run_background_scrape(request_id, target_url, chamber_name, city_string, sta
 
 
 def purchase_view(request):
-    """
-    Renders the internal data engine console and handles 
-    direct database execution workflows.
-    """
     if request.method == 'POST':
         chamber_request = ChamberRequest()
         
@@ -581,7 +563,6 @@ def purchase_view(request):
 
 
 def monitor_view(request, request_id):
-    """Renders the dedicated scrolling log window deck for the active scraping run."""
     context = {
         'request_id': request_id,
         'is_authenticated_user': request.user.is_authenticated,
@@ -591,7 +572,6 @@ def monitor_view(request, request_id):
 
 
 def monitor_scrape_api(request, request_id):
-    """API endpoint allowing JavaScript to read active database text logs on the fly."""
     req = get_object_or_404(ChamberRequest, id=request_id)
     return JsonResponse({
         'status': req.status,
@@ -607,17 +587,11 @@ def customer_monitor_view(request, request_id):
     if scrape_request.user_email != request.user.email and not request.user.is_staff:
         return redirect('leads_list')
         
-    # Grab the partial leads generated by matching the exact targeted directory
-    preview_leads = ChamberLead.objects.filter(
-        directory__city_or_region__iexact=scrape_request.city_or_region,
-        directory__state__iexact=scrape_request.state
-    )[:5]
-        
-    # Evaluate total high-fidelity records cleanly relative to explicit target directories
-    leads_count = ChamberLead.objects.filter(
-        directory__city_or_region__iexact=scrape_request.city_or_region,
-        directory__state__iexact=scrape_request.state
-    ).count()
+    # FIX: Pull preview leads right out of the serialized JSON staging array field context
+    directory_record = ChamberDirectory.objects.filter(city_or_region__iexact=scrape_request.city_or_region, state__iexact=scrape_request.state).first()
+    staged_payload = getattr(directory_record, 'staged_leads_data', []) if directory_record else []
+    preview_leads = staged_payload[:5]
+    leads_count = len(staged_payload)
 
     context = {
         'request_id': request_id,
@@ -639,11 +613,9 @@ def customer_monitor_api(request, request_id):
     """API gateway mapping specific client-safe counts and log parameters directly to front-end JSON tickers."""
     req = get_object_or_404(ChamberRequest, id=request_id)
     
-    # 🔒 Strict location tracking match parameters
-    leads_found = ChamberLead.objects.filter(
-        directory__city_or_region__iexact=req.city_or_region,
-        directory__state__iexact=req.state
-    ).count()
+    # FIX: Map live JSON counting indexes straight down to front-end interface meters
+    directory_record = ChamberDirectory.objects.filter(city_or_region__iexact=req.city_or_region, state__iexact=req.state).first()
+    leads_found = len(directory_record.staged_leads_data) if directory_record and directory_record.staged_leads_data else 0
     
     current_status = req.status
     if current_status == 'completed' and leads_found == 0:
@@ -722,7 +694,6 @@ def stripe_webhook(request):
                 if scrape_request_id:
                     scrape_request = ChamberRequest.objects.filter(id=scrape_request_id).first()
                     if scrape_request:
-                        # Locate or generate the active ChamberDirectory element so the workspace permissions map open cleanly
                         target_directory, _ = ChamberDirectory.objects.get_or_create(
                             city_or_region__iexact=scrape_request.city_or_region,
                             state__iexact=scrape_request.state,
@@ -734,15 +705,29 @@ def stripe_webhook(request):
                             }
                         )
                         
-                        # Authorize the purchasing account to view this unlocked directory
                         UserPurchase.objects.get_or_create(
                             user=user_obj,
                             directory=target_directory,
                             defaults={'stripe_session_id': session_dict.get('id')}
                         )
                         
-                        # Propagate the directory link back down to the raw leads table to unmask the teaser rows
-                        ChamberLead.objects.filter(directory=target_directory).update(directory=target_directory)
+                        # 🔥 FULFILLMENT: Now that they paid, unpack the staged JSON array 
+                        # and move the rows into the database!
+                        staged_data = getattr(target_directory, 'staged_leads_data', [])
+                        if staged_data:
+                            for item in staged_data:
+                                ChamberLead.objects.get_or_create(
+                                    email=item.get('email'),
+                                    directory=target_directory,
+                                    defaults={
+                                        'first_name': item.get('first_name'),
+                                        'last_name': item.get('last_name'),
+                                        'name': f"{item.get('first_name')} {item.get('last_name')}",
+                                        'title': item.get('title'),
+                                        'organization': target_directory.name,
+                                        'chamber': target_directory.name
+                                    }
+                                )
                         
         except User.DoesNotExist:
             pass
@@ -752,7 +737,6 @@ def stripe_webhook(request):
 
 @login_required
 def export_leads_csv(request):
-    """Dynamically streams the user's filtered chamber leads list into a downloadable CSV spreadsheet."""
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="georgia_chamber_leads.csv"'
 
@@ -832,14 +816,12 @@ def export_leads_csv(request):
 
 
 def active_directories_api(request):
-    """Serves a raw array of lowercase city names currently cataloged in the database layout."""
     cities = ChamberDirectory.objects.filter(is_active=True).values_list('city_or_region', flat=True).distinct()
     cleaned_cities = [str(c).strip().lower() for c in cities if c]
     return JsonResponse({'active_cities': cleaned_cities})
 
 
 def about_page(request):
-    """Renders the trust, objective and customer-centric value positioning framework."""
     context = {
         'is_authenticated_user': request.user.is_authenticated,
         'user_email': request.user.email if request.user.is_authenticated else "",

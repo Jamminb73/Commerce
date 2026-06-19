@@ -314,7 +314,7 @@ class Command(BaseCommand):
                 except Exception:
                     pass
 
-            # Loop block to allow up to 2 fallback pages (current target vs. generic about fallback) if the first yields 0 records
+            # Loop block to allow up to 2 fallback pages if the first yields 0 records
             for attempt in range(2):
                 if attempt == 1:
                     # 🎯 STAGE 2: If the primary scrape yielded nothing, slow down and run a secondary deep search

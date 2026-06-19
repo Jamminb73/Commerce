@@ -85,11 +85,11 @@
                             <option value="DE">Delaware</option>
                             <option value="FL">Florida</option>
                         </select>
-                </div>
+                    </div>
 
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">City or Territory Regions</label>
-                        <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="kennesaw"
+                        <input type="text" name="city_or_region" id="clientCityInput" required placeholder="e.g., Kennesaw" value="" autocomplete="off"
                                oninput="evaluateClientButton()"
                                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-[#1a2a6c] transition">
                     </div>
@@ -140,7 +140,14 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", evaluateClientButton);
+        // 🧼 Initialize layout metrics and clear browser persistent input memory on DOM painted line
+        document.addEventListener("DOMContentLoaded", () => {
+            const formElement = document.querySelector("form");
+            if (formElement) {
+                formElement.reset(); 
+            }
+            evaluateClientButton();
+        });
     </script>
 </body>
 </html>

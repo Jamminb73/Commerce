@@ -190,13 +190,16 @@ class Command(BaseCommand):
             self.stdout.write(f"⚠️ [DISCOVERY]: Sifter index time out: {e}")
         return None
 
-    def crawl_for_directory_target(self, page, base_url):
+    def crawl_for_directory_target(self, page, base_url, exclude_urls=None):
         """🕷️ Intent Scout Layer: Scores navigation text semantically to locate high-value rosters."""
+        if exclude_urls is None:
+            exclude_urls = []
+            
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             time.sleep(3)
             
-            target_page = page.evaluate('''() => {
+            target_page = page.evaluate('''([baseUrl, blacklistedPaths]) => {
                 let anchors = Array.from(document.querySelectorAll('a'));
                 let bestLink = null;
                 let highestScore = -999;
@@ -221,22 +224,29 @@ class Command(BaseCommand):
                 for (let anchor of anchors) {
                     if (!isValidLink(anchor)) continue;
                     
+                    let hrefLower = anchor.href.toLowerCase().trim();
+                    
+                    // 🛡️ EXCLUSION MATRIX GUARD: Ignore targets that already failed with 0 yield
+                    if (blacklistedPaths.some(badUrl => hrefLower === badUrl.toLowerCase().trim() || hrefLower + '/' === badUrl.toLowerCase().trim())) {
+                        continue;
+                    }
+                    
                     let text = (anchor.innerText || anchor.textContent || '').toLowerCase().trim();
-                    let href = (anchor.getAttribute('href') || '').toLowerCase();
+                    let hrefAttrLower = (anchor.getAttribute('href') || '').toLowerCase();
                     
                     let currentScore = 0;
                     let matchedAny = false;
                     
                     // Score based on text and href attributes
                     for (let rule of scoringMatrix) {
-                        if (rule.keywords.some(kw => text.includes(kw) || href.includes(kw))) {
+                        if (rule.keywords.some(kw => text.includes(kw) || hrefAttrLower.includes(kw))) {
                             currentScore = Math.max(currentScore, rule.score);
                             matchedAny = true;
                         }
                     }
 
                     // 🌟 CRITICAL ANTI-PROGRAM SAFEGUARD: Heavily penalize landing page traps
-                    if (text.includes('program') || href.includes('program') || text.includes('workshop') || href.includes('workshop')) {
+                    if (text.includes('program') || hrefAttrLower.includes('program') || text.includes('workshop') || hrefAttrLower.includes('workshop')) {
                         currentScore -= 60;
                     }
 
@@ -247,7 +257,7 @@ class Command(BaseCommand):
                 }
                 
                 return bestLink;
-            }''')
+            }''', [base_url, exclude_urls])
             
             if target_page:
                 return target_page
@@ -300,12 +310,17 @@ class Command(BaseCommand):
                 except Exception:
                     pass
 
+            # Track unique attempted routes to prevent duplication loops
+            attempted_urls = []
+
             for attempt in range(2):
                 if attempt == 1:
                     parsed_uri = urllib.parse.urlparse(resolved_url)
                     fallback_base = f"{parsed_uri.scheme}://{parsed_uri.netloc}"
                     self.stdout.write(self.style.WARNING(f"⚠️ [ZERO YIELD FALLBACK]: Attempt 1 hit an empty extraction layer. Retrying root routing map..."))
-                    resolved_url = self.crawl_for_directory_target(page, fallback_base)
+                    
+                    attempted_urls.append(resolved_url)
+                    resolved_url = self.crawl_for_directory_target(page, fallback_base, exclude_urls=attempted_urls)
 
                 self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")
                 
@@ -321,47 +336,94 @@ class Command(BaseCommand):
                         let data = [];
                         let seenEmails = new Set();
                         let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
+                        let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@"];
+
+                        // 1. Gather all raw anchor elements that have a mailto link
+                        let mailtoAnchors = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
                         
-                        let elements = Array.from(document.querySelectorAll('body *')).filter(el => {
-                            let txt = el.innerText || el.textContent;
-                            return txt && el.children.length === 0 && txt.trim().length > 0;
-                        });
+                        // Fallback: If no mailto tags exist, find elements whose text contains an email
+                        if (mailtoAnchors.length === 0) {
+                            let allElements = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length === 0);
+                            for (let el of allElements) {
+                                let match = el.innerText ? el.innerText.match(emailRegex) : null;
+                                if (match) {
+                                    let mockAnchor = document.createElement('a');
+                                    mockAnchor.setAttribute('href', 'mailto:' + match[0]);
+                                    el.appendChild(mockAnchor);
+                                    mailtoAnchors.push(mockAnchor);
+                                }
+                            }
+                        }
 
-                        for (let i = 0; i < elements.length; i++) {
-                            let currentText = (elements[i].innerText || elements[i].textContent).trim();
-                            let emailMatch = currentText.match(emailRegex);
-                            
-                            if (emailMatch || (elements[i].tagName === 'A' && elements[i].getAttribute('href') && elements[i].getAttribute('href').startsWith('mailto:'))) {
-                                let email = emailMatch ? emailMatch[0].toLowerCase().trim() : elements[i].getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
-                                
-                                let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@"];
-                                if (seenEmails.has(email) || junk.some(word => email.includes(word))) continue;
-                                seenEmails.add(email);
+                        // 2. Loop through every detected email anchor node
+                        for (let anchor of mailtoAnchors) {
+                            let email = anchor.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                            if (seenEmails.has(email) || junk.some(word => email.includes(word))) continue;
 
-                                let rawName = "";
-                                let rawTitle = "";
+                            let rawName = "";
+                            let rawTitle = "";
+
+                            // TIER 1: THE SMART CARD / CONTAINER SCOUT (Conquers Denver & Modern Grid Profiles)
+                            let currentParent = anchor.parentElement;
+                            let cardContainer = null;
+                            for (let depth = 0; depth < 5; depth++) {
+                                if (!currentParent || currentParent.tagName === 'BODY') break;
+                                let className = (currentParent.className || '').toLowerCase();
+                                let idName = (currentParent.id || '').toLowerCase();
                                 
-                                let lookbackCount = 0;
-                                for (let j = i - 1; j >= 0 && lookbackCount < 4; j--) {
-                                    let text = (elements[j].innerText || elements[j].textContent).trim();
-                                    if (!text || text.length < 2 || emailRegex.test(text) || /\\d{3}/.test(text) || text.toLowerCase().includes("bio")) continue;
-                                    
-                                    if (!rawTitle) {
-                                        rawTitle = text;
-                                    } else if (!rawName && text !== rawTitle) {
-                                        rawName = text;
-                                        break; 
+                                if (className.includes('card') || className.includes('member') || className.includes('staff') || 
+                                    className.includes('team') || className.includes('profile') || className.includes('row') || 
+                                    className.includes('block') || className.includes('item') || idName.includes('user')) {
+                                    cardContainer = currentParent;
+                                    break;
+                                }
+                                currentParent = currentParent.parentElement;
+                            }
+
+                            if (cardContainer) {
+                                let cardTextNodes = Array.from(cardContainer.querySelectorAll('*'))
+                                    .filter(el => el.children.length === 0)
+                                    .map(el => (el.innerText || el.textContent).trim())
+                                    .filter(txt => txt.length > 1 && !emailRegex.test(txt) && !txt.toLowerCase().includes('bio') && !txt.toLowerCase().includes('profile'));
+
+                                if (cardTextNodes.length >= 2) {
+                                    rawName = cardTextNodes[0];  
+                                    rawTitle = cardTextNodes[1]; 
+                                }
+                            }
+
+                            // TIER 2: REFINE BACKWARD PROXIMITY FALLBACK (Protects Atlanta & Legacy Flat Layouts)
+                            if (!rawName || rawName.length < 3) {
+                                let allLeafs = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length === 0);
+                                let idx = allLeafs.indexOf(anchor);
+                                if (idx === -1) {
+                                    idx = allLeafs.findIndex(el => el.contains(anchor) || anchor.contains(el));
+                                }
+
+                                if (idx !== -1) {
+                                    let lookbackCount = 0;
+                                    for (let j = idx - 1; j >= 0 && lookbackCount < 5; j--) {
+                                        let text = (allLeafs[j].innerText || allLeafs[j].textContent).trim();
+                                        if (!text || text.length < 2 || emailRegex.test(text) || /\\d{3}/.test(text) || text.toLowerCase().includes("bio")) continue;
+                                        
+                                        if (!rawTitle) {
+                                            rawTitle = text;
+                                        } else if (!rawName && text !== rawTitle) {
+                                            rawName = text;
+                                            break; 
+                                        }
+                                        lookbackCount++;
                                     }
-                                    lookbackCount++;
                                 }
+                            }
 
-                                if (rawName) {
-                                    data.push({
-                                        rawName: rawName,
-                                        title: rawTitle,
-                                        email: email
-                                    });
-                                }
+                            if (rawName && rawName.length >= 3) {
+                                seenEmails.add(email);
+                                data.push({
+                                    rawName: rawName,
+                                    title: rawTitle || "Chamber Executive",
+                                    email: email
+                                });
                             }
                         }
                         return data;

@@ -197,7 +197,8 @@ class Command(BaseCommand):
             
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(3)
+            page.wait_for_load_state('networkidle', timeout=15000)
+            time.sleep(2)
             
             target_page = page.evaluate('''([baseUrl, blacklistedPaths]) => {
                 let anchors = Array.from(document.querySelectorAll('a'));
@@ -265,6 +266,47 @@ class Command(BaseCommand):
             self.stdout.write(f"⚠️ [SCOUT]: Navigation link scoring sweep hit an issue: {e}")
         return base_url
 
+    def build_candidate_urls(self, base_url):
+        """Build a small list of likely staff/directory URLs to retry when the first page is sparse."""
+        candidates = []
+        parsed = urllib.parse.urlparse(base_url)
+        if not parsed.scheme or not parsed.netloc:
+            return candidates
+
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path.rstrip('/')
+        path_variants = [
+            '',
+            '/staff/',
+            '/team/',
+            '/leadership/',
+            '/about-us/',
+            '/about/',
+            '/directory/',
+            '/members/',
+            '/people/',
+            '/contact/'
+        ]
+
+        for variant in path_variants:
+            if variant == '':
+                candidates.append(base)
+            else:
+                candidates.append(base + variant)
+
+        if path:
+            for variant in ('/staff/', '/team/', '/leadership/', '/directory/', '/people/'):
+                candidates.append(base + path + variant)
+            candidates.append(base + path)
+
+        seen = set()
+        ordered = []
+        for url in candidates:
+            if url not in seen:
+                seen.add(url)
+                ordered.append(url)
+        return ordered
+
     def refactored_chamber_scoper(self, target_url, org_name):
         staged_json_payload = []
         resolved_url = target_url
@@ -312,105 +354,171 @@ class Command(BaseCommand):
 
             # Track unique attempted routes to prevent duplication loops
             attempted_urls = []
+            candidate_urls = self.build_candidate_urls(resolved_url)
 
-            for attempt in range(2):
+            for attempt in range(3):
+                current_url = resolved_url
                 if attempt == 1:
                     parsed_uri = urllib.parse.urlparse(resolved_url)
                     fallback_base = f"{parsed_uri.scheme}://{parsed_uri.netloc}"
                     self.stdout.write(self.style.WARNING(f"⚠️ [ZERO YIELD FALLBACK]: Attempt 1 hit an empty extraction layer. Retrying root routing map..."))
-                    
                     attempted_urls.append(resolved_url)
-                    resolved_url = self.crawl_for_directory_target(page, fallback_base, exclude_urls=attempted_urls)
+                    current_url = self.crawl_for_directory_target(page, fallback_base, exclude_urls=attempted_urls)
+                elif attempt == 2 and candidate_urls:
+                    for candidate in candidate_urls:
+                        if candidate not in attempted_urls and candidate != current_url:
+                            current_url = candidate
+                            break
+                    self.stdout.write(self.style.WARNING(f"⚠️ [URL RETRY]: Attempt 3 switching to candidate route: {current_url}"))
 
+                resolved_url = current_url
                 self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")
-                
+
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
-                    time.sleep(5) 
-                    
+                    page.wait_for_load_state('networkidle', timeout=15000)
+                    time.sleep(3)
+
                     for _ in range(6):
                         page.evaluate("window.scrollBy(0, 800);")
                         time.sleep(0.4)
-                    
+
+                    page_summary = page.evaluate('''() => {
+                        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+                        const text = (value) => (value || '').replace(/\s+/g, ' ').trim();
+                        const bodyText = text(document.body ? document.body.innerText || document.body.textContent : '');
+                        const mailtoCount = document.querySelectorAll('a[href^="mailto:"]').length;
+                        const dataEmailCount = document.querySelectorAll('[data-email]').length;
+                        const emailTextMatches = bodyText.match(emailRegex) || [];
+                        const likelyStaff = /staff|team|leadership|directory|board|executive|people|members/i.test(bodyText);
+                        return {
+                            title: document.title || '',
+                            url: window.location.href,
+                            mailtoCount,
+                            dataEmailCount,
+                            emailTextMatches: emailTextMatches.length,
+                            wordCount: bodyText.split(/\s+/).filter(Boolean).length,
+                            likelyStaff
+                        };
+                    }''')
+
+                    self.stdout.write(
+                        f"📈 [SCAN] URL={page_summary.get('url', resolved_url)} | "
+                        f"Title={page_summary.get('title', 'N/A')} | "
+                        f"mailto={page_summary.get('mailtoCount', 0)} | "
+                        f"data-email={page_summary.get('dataEmailCount', 0)} | "
+                        f"email-text={page_summary.get('emailTextMatches', 0)} | "
+                        f"likely-staff={page_summary.get('likelyStaff', False)}"
+                    )
+
                     extracted_leads = page.evaluate('''() => {
                         let data = [];
                         let seenEmails = new Set();
-                        let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/;
-                        let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@"];
+                        let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+                        let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "webmaster@", "membership@"];
+                        let text = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
-                        // 1. Gather all raw anchor elements that have a mailto link
                         let mailtoAnchors = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
-                        
-                        // Fallback: If no mailto tags exist, find elements whose text contains an email
+                        let attrAnchors = Array.from(document.querySelectorAll('a[href], [data-email], [data-href]'))
+                            .filter(el => {
+                                let href = (el.getAttribute('href') || el.getAttribute('data-href') || '').toLowerCase();
+                                let dataEmail = (el.getAttribute('data-email') || '').toLowerCase();
+                                return href.includes('@') || dataEmail.includes('@');
+                            });
+
                         if (mailtoAnchors.length === 0) {
-                            let allElements = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length === 0);
+                            let allElements = Array.from(document.querySelectorAll('body *'));
                             for (let el of allElements) {
-                                let match = el.innerText ? el.innerText.match(emailRegex) : null;
+                                let textContent = text(el.innerText || el.textContent || '');
+                                let match = textContent.match(emailRegex);
                                 if (match) {
-                                    let mockAnchor = document.createElement('a');
-                                    mockAnchor.setAttribute('href', 'mailto:' + match[0]);
-                                    el.appendChild(mockAnchor);
-                                    mailtoAnchors.push(mockAnchor);
+                                    let email = match[0].toLowerCase();
+                                    if (!junk.some(word => email.includes(word))) {
+                                        let mockAnchor = document.createElement('a');
+                                        mockAnchor.setAttribute('href', 'mailto:' + email);
+                                        el.appendChild(mockAnchor);
+                                        mailtoAnchors.push(mockAnchor);
+                                    }
                                 }
                             }
                         }
 
-                        // 2. Loop through every detected email anchor node
-                        for (let anchor of mailtoAnchors) {
-                            let email = anchor.getAttribute('href').replace('mailto:', '').split('?')[0].toLowerCase().trim();
-                            if (seenEmails.has(email) || junk.some(word => email.includes(word))) continue;
+                        let candidateAnchors = mailtoAnchors.concat(attrAnchors);
+                        let anchorSet = [];
+                        for (let anchor of candidateAnchors) {
+                            let email = '';
+                            let href = (anchor.getAttribute('href') || anchor.getAttribute('data-href') || '').trim();
+                            let dataEmail = (anchor.getAttribute('data-email') || '').trim();
+                            if (href.startsWith('mailto:')) {
+                                email = href.replace('mailto:', '').split('?')[0].toLowerCase().trim();
+                            } else if (dataEmail) {
+                                email = dataEmail.toLowerCase().trim();
+                            } else if (href.includes('@')) {
+                                email = href.split(/[?#]/)[0].toLowerCase().trim();
+                            }
+                            if (email && !seenEmails.has(email) && !junk.some(word => email.includes(word)) && email.match(emailRegex)) {
+                                seenEmails.add(email);
+                                anchorSet.push({ anchor, email });
+                            }
+                        }
 
-                            let rawName = "";
-                            let rawTitle = "";
+                        for (let item of anchorSet) {
+                            let anchor = item.anchor;
+                            let email = item.email;
+                            let rawName = '';
+                            let rawTitle = '';
 
-                            // TIER 1: THE SMART CARD / CONTAINER SCOUT (Conquers Denver & Modern Grid Profiles)
                             let currentParent = anchor.parentElement;
                             let cardContainer = null;
-                            for (let depth = 0; depth < 5; depth++) {
+                            for (let depth = 0; depth < 6; depth++) {
                                 if (!currentParent || currentParent.tagName === 'BODY') break;
                                 let className = (currentParent.className || '').toLowerCase();
                                 let idName = (currentParent.id || '').toLowerCase();
-                                
-                                if (className.includes('card') || className.includes('member') || className.includes('staff') || 
-                                    className.includes('team') || className.includes('profile') || className.includes('row') || 
-                                    className.includes('block') || className.includes('item') || idName.includes('user')) {
+                                if (className.includes('card') || className.includes('member') || className.includes('staff') ||
+                                    className.includes('team') || className.includes('profile') || className.includes('person') ||
+                                    className.includes('employee') || className.includes('row') || className.includes('block') ||
+                                    className.includes('item') || idName.includes('user') || idName.includes('person')) {
                                     cardContainer = currentParent;
                                     break;
                                 }
                                 currentParent = currentParent.parentElement;
                             }
 
+                            if (!cardContainer) {
+                                let closest = anchor.closest('article, section, li, tr, div, td, p');
+                                if (closest) cardContainer = closest;
+                            }
+
                             if (cardContainer) {
                                 let cardTextNodes = Array.from(cardContainer.querySelectorAll('*'))
                                     .filter(el => el.children.length === 0)
-                                    .map(el => (el.innerText || el.textContent).trim())
+                                    .map(el => text(el.innerText || el.textContent || ''))
                                     .filter(txt => txt.length > 1 && !emailRegex.test(txt) && !txt.toLowerCase().includes('bio') && !txt.toLowerCase().includes('profile'));
 
                                 if (cardTextNodes.length >= 2) {
-                                    rawName = cardTextNodes[0];  
-                                    rawTitle = cardTextNodes[1]; 
+                                    rawName = cardTextNodes[0];
+                                    rawTitle = cardTextNodes[1];
+                                } else if (cardTextNodes.length === 1) {
+                                    rawName = cardTextNodes[0];
                                 }
                             }
 
-                            // TIER 2: REFINE BACKWARD PROXIMITY FALLBACK (Protects Atlanta & Legacy Flat Layouts)
                             if (!rawName || rawName.length < 3) {
                                 let allLeafs = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length === 0);
                                 let idx = allLeafs.indexOf(anchor);
                                 if (idx === -1) {
                                     idx = allLeafs.findIndex(el => el.contains(anchor) || anchor.contains(el));
                                 }
-
                                 if (idx !== -1) {
                                     let lookbackCount = 0;
-                                    for (let j = idx - 1; j >= 0 && lookbackCount < 5; j--) {
-                                        let text = (allLeafs[j].innerText || allLeafs[j].textContent).trim();
-                                        if (!text || text.length < 2 || emailRegex.test(text) || /\\d{3}/.test(text) || text.toLowerCase().includes("bio")) continue;
-                                        
-                                        if (!rawTitle) {
-                                            rawTitle = text;
-                                        } else if (!rawName && text !== rawTitle) {
-                                            rawName = text;
-                                            break; 
+                                    for (let j = idx - 1; j >= 0 && lookbackCount < 7; j--) {
+                                        let candidateText = text(allLeafs[j].innerText || allLeafs[j].textContent || '');
+                                        if (!candidateText || candidateText.length < 2 || emailRegex.test(candidateText) || /\d{3}/.test(candidateText) || candidateText.toLowerCase().includes('bio')) continue;
+                                        if (!rawName && candidateText !== rawTitle) {
+                                            rawName = candidateText;
+                                        } else if (!rawTitle) {
+                                            rawTitle = candidateText;
+                                            break;
                                         }
                                         lookbackCount++;
                                     }
@@ -418,10 +526,9 @@ class Command(BaseCommand):
                             }
 
                             if (rawName && rawName.length >= 3) {
-                                seenEmails.add(email);
                                 data.push({
                                     rawName: rawName,
-                                    title: rawTitle || "Chamber Executive",
+                                    title: rawTitle || 'Chamber Executive',
                                     email: email
                                 });
                             }
@@ -450,7 +557,7 @@ class Command(BaseCommand):
 
                         first_name, last_name = parse_name(raw_name)
                         full_name = f"{first_name} {last_name}".strip()
-                        
+
                         if not first_name or len(first_name) < 2 or full_name in seen_names:
                             continue
                         seen_names.add(full_name)
@@ -472,10 +579,11 @@ class Command(BaseCommand):
                         break 
                     else:
                         self.stdout.write(self.style.WARNING(f"   ⚠️ Proximity extraction attempt hit 0 targets on current path."))
+                        attempted_urls.append(resolved_url)
 
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"   ❌ Execution crash on {org_name}: {e}"))
-                    
+
             browser.close()
 
         return staged_json_payload, resolved_url

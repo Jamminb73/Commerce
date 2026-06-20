@@ -201,44 +201,45 @@ class Command(BaseCommand):
             time.sleep(2)
             
             target_page = page.evaluate('''([baseUrl, blacklistedPaths]) => {
-                let anchors = Array.from(document.querySelectorAll('a'));
+                // Unmask the underworld: Pull hidden nodes, custom layout attributes, buttons, and text paths
+                let elements = Array.from(document.querySelectorAll('a, [data-href], [data-url], li, button'));
                 let bestLink = null;
                 let highestScore = -999;
 
-                let isValidLink = (a) => {
-                    let hrefAttr = a.getAttribute('href') || '';
-                    return hrefAttr.trim() !== '' && 
-                           !hrefAttr.startsWith('#') && 
-                           !hrefAttr.startsWith('javascript:') && 
-                           a.href && 
-                           a.href.startsWith('http');
-                };
-
                 // Semantic Priority Weights
                 let scoringMatrix = [
-                    { keywords: ['board of directors', 'board roster', 'governance'], score: 100 },
-                    { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory'], score: 90 },
+                    { keywords: ['board of directors', 'board roster', 'governance', 'board-of-directors'], score: 100 },
+                    { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory', 'chamber-staff'], score: 90 },
                     { keywords: ['staff', 'leadership', 'executive committee'], score: 80 },
                     { keywords: ['directory', 'about us', 'about-us', 'contact'], score: 40 }
                 ];
 
-                for (let anchor of anchors) {
-                    if (!isValidLink(anchor)) continue;
-                    
-                    let hrefLower = anchor.href.toLowerCase().trim();
+                for (let el of elements) {
+                    let rawHref = el.getAttribute('href') || el.getAttribute('data-href') || el.getAttribute('data-url') || '';
+                    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) continue;
+
+                    // Recompile micro relative path extensions to standardized full target paths automatically
+                    let fullUrl = '';
+                    try {
+                        fullUrl = new URL(rawHref, baseUrl).href;
+                    } catch(e) {
+                        continue;
+                    }
+
+                    let hrefLower = fullUrl.toLowerCase().trim();
                     
                     // 🛡️ EXCLUSION MATRIX GUARD: Ignore targets that already failed with 0 yield
                     if (blacklistedPaths.some(badUrl => hrefLower === badUrl.toLowerCase().trim() || hrefLower + '/' === badUrl.toLowerCase().trim())) {
                         continue;
                     }
                     
-                    let text = (anchor.innerText || anchor.textContent || '').toLowerCase().trim();
-                    let hrefAttrLower = (anchor.getAttribute('href') || '').toLowerCase();
+                    let text = (el.innerText || el.textContent || '').toLowerCase().trim();
+                    let hrefAttrLower = rawHref.toLowerCase();
                     
                     let currentScore = 0;
                     let matchedAny = false;
                     
-                    // Score based on text and href attributes
+                    // Score based on text content or the raw link destination path text configuration
                     for (let rule of scoringMatrix) {
                         if (rule.keywords.some(kw => text.includes(kw) || hrefAttrLower.includes(kw))) {
                             currentScore = Math.max(currentScore, rule.score);
@@ -253,7 +254,7 @@ class Command(BaseCommand):
 
                     if (matchedAny && currentScore > highestScore) {
                         highestScore = currentScore;
-                        bestLink = anchor.href;
+                        bestLink = fullUrl;
                     }
                 }
                 
@@ -369,7 +370,7 @@ class Command(BaseCommand):
                         if candidate not in attempted_urls and candidate != current_url:
                             current_url = candidate
                             break
-                    self.stdout.write(self.style.WARNING(f"⚠️ [URL RETRY]: Attempt 3 switching to candidate route: {current_url}"))
+                    self.stdout.write(self.style.WARNING(f"⚠️ https://www.merriam-webster.com/dictionary/retry: Attempt 3 switching to candidate route: {current_url}"))
 
                 resolved_url = current_url
                 self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")

@@ -191,20 +191,31 @@ class Command(BaseCommand):
         return None
 
     def crawl_for_directory_target(self, page, base_url, exclude_urls=None):
-        """🕷️ Intent Scout Layer: Scores navigation text semantically to locate high-value rosters."""
+        """🕷️ Intent Scout Layer: Scores navigation text globally to unmask high-value hidden targets."""
         if exclude_urls is None:
             exclude_urls = []
             
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_load_state('networkidle', timeout=15000)
-            time.sleep(2)
+            time.sleep(4)  # 🧭 Give client-side hamburger components extra time to populate the DOM structure completely
             
             target_page = page.evaluate('''([baseUrl, blacklistedPaths]) => {
-                // Unmask the underworld: Pull hidden nodes, custom layout attributes, buttons, and text paths
-                let elements = Array.from(document.querySelectorAll('a, [data-href], [data-url], li, button'));
+                let elements = Array.from(document.querySelectorAll('a, [data-href], [data-url], [aria-controls], li, button'));
                 let bestLink = null;
                 let highestScore = -999;
+
+                // Helper utility to strictly sanitize and normalize tracking string paths
+                let cleanUrlString = (str) => {
+                    if (!str) return '';
+                    let clean = str.toLowerCase().trim();
+                    if (clean.endsWith('/')) {
+                        clean = clean.slice(0, -1);
+                    }
+                    return clean;
+                };
+
+                let preparedBlacklist = blacklistedPaths.map(url => cleanUrlString(url));
 
                 // Semantic Priority Weights
                 let scoringMatrix = [
@@ -218,7 +229,6 @@ class Command(BaseCommand):
                     let rawHref = el.getAttribute('href') || el.getAttribute('data-href') || el.getAttribute('data-url') || '';
                     if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) continue;
 
-                    // Recompile micro relative path extensions to standardized full target paths automatically
                     let fullUrl = '';
                     try {
                         fullUrl = new URL(rawHref, baseUrl).href;
@@ -226,10 +236,9 @@ class Command(BaseCommand):
                         continue;
                     }
 
-                    let hrefLower = fullUrl.toLowerCase().trim();
-                    
-                    // 🛡️ EXCLUSION MATRIX GUARD: Ignore targets that already failed with 0 yield
-                    if (blacklistedPaths.some(badUrl => hrefLower === badUrl.toLowerCase().trim() || hrefLower + '/' === badUrl.toLowerCase().trim())) {
+                    // 🛡️ RE-ENGINEERED ARMORED URL GUARD LAYER
+                    let normalizedCurrentUrl = cleanUrlString(fullUrl);
+                    if (preparedBlacklist.some(badUrl => normalizedCurrentUrl === badUrl)) {
                         continue;
                     }
                     
@@ -239,7 +248,6 @@ class Command(BaseCommand):
                     let currentScore = 0;
                     let matchedAny = false;
                     
-                    // Score based on text content or the raw link destination path text configuration
                     for (let rule of scoringMatrix) {
                         if (rule.keywords.some(kw => text.includes(kw) || hrefAttrLower.includes(kw))) {
                             currentScore = Math.max(currentScore, rule.score);
@@ -247,7 +255,6 @@ class Command(BaseCommand):
                         }
                     }
 
-                    // 🌟 CRITICAL ANTI-PROGRAM SAFEGUARD: Heavily penalize landing page traps
                     if (text.includes('program') || hrefAttrLower.includes('program') || text.includes('workshop') || hrefAttrLower.includes('workshop')) {
                         currentScore -= 60;
                     }
@@ -367,7 +374,10 @@ class Command(BaseCommand):
                     current_url = self.crawl_for_directory_target(page, fallback_base, exclude_urls=attempted_urls)
                 elif attempt == 2 and candidate_urls:
                     for candidate in candidate_urls:
-                        if candidate not in attempted_urls and candidate != current_url:
+                        # Normalize check on candidates to make triple sure it's completely unique
+                        clean_cand = candidate.rstrip('/')
+                        clean_att = [u.rstrip('/') for u in attempted_urls]
+                        if clean_cand not in clean_att and candidate != current_url:
                             current_url = candidate
                             break
                     self.stdout.write(self.style.WARNING(f"⚠️ https://www.merriam-webster.com/dictionary/retry: Attempt 3 switching to candidate route: {current_url}"))

@@ -32,6 +32,9 @@ ORGANIZATION_KEYWORDS = (
     'agency', 'institute', 'society', 'club'
 )
 
+STAFF_PAGE_HINTS = ('staff', 'team', 'leadership', 'board', 'executive', 'people', 'directory', 'officers', 'employee')
+LOW_SIGNAL_PAGES = ('event', 'events', 'news', 'blog', 'gallery', 'history', 'privacy', 'terms', 'download', 'guide', 'visit', 'vacation')
+
 
 def is_valid_human_name(name_str):
     """Rigorously validates if a string is structured like an actual human name."""
@@ -237,10 +240,10 @@ class Command(BaseCommand):
 
                 // Semantic Priority Weights
                 let scoringMatrix = [
-                    { keywords: ['board of directors', 'board roster', 'governance', 'board-of-directors'], score: 100 },
-                    { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory', 'chamber-staff'], score: 90 },
-                    { keywords: ['staff', 'leadership', 'executive committee'], score: 80 },
-                    { keywords: ['directory', 'about us', 'about-us', 'contact'], score: 40 }
+                    { keywords: ['board of directors', 'board roster', 'governance', 'board-of-directors'], score: 140 },
+                    { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory', 'chamber-staff', 'leadership team'], score: 130 },
+                    { keywords: ['staff', 'leadership', 'executive committee', 'executive', 'people', 'officers', 'board'], score: 110 },
+                    { keywords: ['directory', 'about us', 'about-us', 'contact'], score: 45 }
                 ];
 
                 for (let el of elements) {
@@ -261,6 +264,7 @@ class Command(BaseCommand):
                     
                     let text = (el.innerText || el.textContent || '').toLowerCase().trim();
                     let hrefAttrLower = rawHref.toLowerCase();
+                    let pathHint = (window.location.pathname || '').toLowerCase();
                     
                     let currentScore = 0;
                     let matchedAny = false;
@@ -272,8 +276,12 @@ class Command(BaseCommand):
                         }
                     }
 
-                    if (text.includes('program') || hrefAttrLower.includes('program') || text.includes('workshop') || hrefAttrLower.includes('workshop')) {
-                        currentScore -= 60;
+                    if (pathHint.includes('/staff') || pathHint.includes('/team') || pathHint.includes('/leadership') || pathHint.includes('/board') || pathHint.includes('/people') || pathHint.includes('/directory')) {
+                        currentScore += 20;
+                    }
+
+                    if (text.includes('program') || hrefAttrLower.includes('program') || text.includes('events') || hrefAttrLower.includes('events') || text.includes('workshop') || hrefAttrLower.includes('workshop')) {
+                        currentScore -= 90;
                     }
 
                     if (matchedAny && currentScore > highestScore) {
@@ -417,7 +425,8 @@ class Command(BaseCommand):
                         const mailtoCount = document.querySelectorAll('a[href^="mailto:"]').length;
                         const dataEmailCount = document.querySelectorAll('[data-email]').length;
                         const emailTextMatches = bodyText.match(emailRegex) || [];
-                        const likelyStaff = /staff|team|leadership|directory|board|executive|people|members/i.test(bodyText);
+                        const pageUrl = window.location.href || '';
+                        const likelyStaff = /(staff|team|leadership|directory|board|executive|people|officers|members|employee)/i.test(bodyText + ' ' + document.title + ' ' + pageUrl) || /(\/staff\/|\/team\/|\/leadership\/|\/board\/|\/people\/|\/directory\/)/i.test(pageUrl);
                         return {
                             title: document.title || '',
                             url: window.location.href,
@@ -526,11 +535,21 @@ class Command(BaseCommand):
                                     .map(el => text(el.innerText || el.textContent || ''))
                                     .filter(txt => txt.length > 1 && !emailRegex.test(txt) && !txt.toLowerCase().includes('bio') && !txt.toLowerCase().includes('profile'));
 
+                                let headingCandidates = Array.from(cardContainer.querySelectorAll('h1,h2,h3,h4,strong'))
+                                    .map(el => text(el.innerText || el.textContent || ''))
+                                    .filter(txt => txt.length > 2 && !emailRegex.test(txt) && txt.split(/\s+/).length <= 6)
+                                    .filter(txt => !/(contact us|about us|read bio|view profile|bio|follow us|subscribe|join us)/i.test(txt));
+
                                 if (cardTextNodes.length >= 2) {
                                     rawName = cardTextNodes[0];
                                     rawTitle = cardTextNodes[1];
+                                } else if (headingCandidates.length >= 2) {
+                                    rawName = headingCandidates[0];
+                                    rawTitle = headingCandidates[1];
                                 } else if (cardTextNodes.length === 1) {
                                     rawName = cardTextNodes[0];
+                                } else if (headingCandidates.length === 1) {
+                                    rawName = headingCandidates[0];
                                 }
                             }
 
@@ -557,7 +576,17 @@ class Command(BaseCommand):
                             }
 
                             if (rawName && rawName.length >= 3) {
-                                data.push({ rawName, title: rawTitle || 'Chamber Executive', email });
+                                let cleanName = rawName.replace(/\s+/g, ' ').trim();
+                                let cleanTitle = (rawTitle || '').replace(/\s+/g, ' ').trim();
+                                let lowerName = cleanName.toLowerCase();
+                                let lowerTitle = cleanTitle.toLowerCase();
+
+                                if (/(contact|about|home|join|events|members|directory|team|staff|subscribe|view profile|read bio)/i.test(lowerName) ||
+                                    /(contact|about|home|join|events|members|directory|team|staff|subscribe|view profile|read bio)/i.test(lowerTitle)) {
+                                    continue;
+                                }
+
+                                data.push({ rawName: cleanName, title: cleanTitle || 'Chamber Executive', email });
                             }
                         }
 

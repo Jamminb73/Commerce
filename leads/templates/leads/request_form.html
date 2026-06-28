@@ -135,6 +135,10 @@
     <form method="POST" action="{% url 'request_custom_scrape' %}">
         {% csrf_token %}
 
+        <div style="display:none !important; visibility:hidden !important;" aria-hidden="true">
+            <input type="text" name="user_verification_token" autocomplete="off" tabindex="-1">
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
                 <label for="clientEmail" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Contact Email Address</label>
@@ -234,7 +238,6 @@
 {{ active_cities_json|json_script:"cataloged-cities-data" }}
 
 <script>
-    // Safely pull context from the tracking node block to make VS Code happy
     const catalogedCities = JSON.parse(document.getElementById('cataloged-cities-data').textContent || "[]");
 
     function evaluateClientButton() {

@@ -32,10 +32,6 @@ ORGANIZATION_KEYWORDS = (
     'agency', 'institute', 'society', 'club'
 )
 
-STAFF_PAGE_HINTS = ('staff', 'team', 'leadership', 'board', 'executive', 'people', 'directory', 'officers', 'employee')
-LOW_SIGNAL_PAGES = ('event', 'events', 'news', 'blog', 'gallery', 'history', 'privacy', 'terms', 'download', 'guide', 'visit', 'vacation')
-
-
 def is_valid_human_name(name_str):
     """Rigorously validates if a string is structured like an actual human name."""
     if not name_str:
@@ -220,10 +216,10 @@ class Command(BaseCommand):
         try:
             page.goto(base_url, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_load_state('networkidle', timeout=15000)
-            time.sleep(4)  
+            time.sleep(3)  
             
             target_page = page.evaluate('''([baseUrl, blacklistedPaths]) => {
-                let elements = Array.from(document.querySelectorAll('a, [data-href], [data-url], [aria-controls], li, button'));
+                let elements = Array.from(document.querySelectorAll('a'));
                 let bestLink = null;
                 let highestScore = -999;
 
@@ -240,14 +236,14 @@ class Command(BaseCommand):
 
                 // Semantic Priority Weights
                 let scoringMatrix = [
-                    { keywords: ['board of directors', 'board roster', 'governance', 'board-of-directors'], score: 140 },
+                    { keywords: ['board of directors', 'board roster', 'governance', 'board-of-directors', 'governance/chamber-board-of-directors'], score: 140 },
                     { keywords: ['chamber staff', 'meet the team', 'our team', 'staff directory', 'chamber-staff', 'leadership team'], score: 130 },
                     { keywords: ['staff', 'leadership', 'executive committee', 'executive', 'people', 'officers', 'board'], score: 110 },
                     { keywords: ['directory', 'about us', 'about-us', 'contact'], score: 45 }
                 ];
 
                 for (let el of elements) {
-                    let rawHref = el.getAttribute('href') || el.getAttribute('data-href') || el.getAttribute('data-url') || '';
+                    let rawHref = el.getAttribute('href') || '';
                     if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) continue;
 
                     let fullUrl = '';
@@ -264,7 +260,6 @@ class Command(BaseCommand):
                     
                     let text = (el.innerText || el.textContent || '').toLowerCase().trim();
                     let hrefAttrLower = rawHref.toLowerCase();
-                    let pathHint = (window.location.pathname || '').toLowerCase();
                     
                     let currentScore = 0;
                     let matchedAny = false;
@@ -276,12 +271,15 @@ class Command(BaseCommand):
                         }
                     }
 
-                    if (pathHint.includes('/staff') || pathHint.includes('/team') || pathHint.includes('/leadership') || pathHint.includes('/board') || pathHint.includes('/people') || pathHint.includes('/directory')) {
-                        currentScore += 20;
-                    }
-
-                    if (text.includes('program') || hrefAttrLower.includes('program') || text.includes('events') || hrefAttrLower.includes('events') || text.includes('workshop') || hrefAttrLower.includes('workshop')) {
+                    // FIX 4: Narrow penalization structure to avoid filtering parent container components
+                    if (hrefAttrLower.includes('event') || text.includes('event-calendar') || text.includes('calendar of events')) {
                         currentScore -= 90;
+                    }
+                    if (hrefAttrLower.includes('program') || text.includes('programs')) {
+                        currentScore -= 90;
+                    }
+                    if (hrefAttrLower.includes('member-directory') || hrefAttrLower.includes('/members/')) {
+                        currentScore -= 50;
                     }
 
                     if (matchedAny && currentScore > highestScore) {
@@ -300,7 +298,7 @@ class Command(BaseCommand):
         return base_url
 
     def build_candidate_urls(self, base_url):
-        """Build a small list of likely staff/directory URLs to retry when the first page is sparse."""
+        """Build a deep candidate array of likely directory URLs to bypass complex SPA rendering walls (Fix 3)."""
         candidates = []
         parsed = urllib.parse.urlparse(base_url)
         if not parsed.scheme or not parsed.netloc:
@@ -308,17 +306,12 @@ class Command(BaseCommand):
 
         base = f"{parsed.scheme}://{parsed.netloc}"
         path = parsed.path.rstrip('/')
+        
         path_variants = [
-            '',
-            '/staff/',
-            '/team/',
-            '/leadership/',
-            '/about-us/',
-            '/about/',
-            '/directory/',
-            '/members/',
-            '/people/',
-            '/contact/'
+            '', '/staff/', '/team/', '/leadership/', '/about-us/', '/about/', '/directory/', 
+            '/members/', '/people/', '/contact/', '/about/team/', '/about/leadership/', 
+            '/about/staff/', '/about-us/team/', '/about-us/leadership/', '/who-we-are/team/', 
+            '/who-we-are/leadership/', '/governance/', '/governance/chamber-board-of-directors/'
         ]
 
         for variant in path_variants:
@@ -372,7 +365,7 @@ class Command(BaseCommand):
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
                     rescue_url = page.evaluate('''() => {
                         let links = Array.from(document.querySelectorAll('a'));
-                        let targets = ['board of directors', 'board', 'staff', 'team', 'leadership', 'governance', 'about us'];
+                        let targets = ['board of directors', 'board', 'staff', 'team', 'leadership', 'governance', 'about us', 'governance/chamber-board-of-directors'];
                         for (let t of targets) {
                             let found = links.find(a => (a.innerText || a.textContent || '').toLowerCase().includes(t) && !a.href.includes('member-directory') && a.href.startsWith('http'));
                             if (found) return found.href;
@@ -382,10 +375,11 @@ class Command(BaseCommand):
                     if rescue_url:
                         resolved_url = rescue_url
                         self.stdout.write(self.style.SUCCESS(f"🔄 [RESCUE SUCCESS]: Redirected search route to high-signal layout: {resolved_url}"))
+                        # FIX 1: Explicitly drive browser context state forward to layout target
+                        page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
                 except Exception:
                     pass
 
-            # Track unique attempted routes to prevent duplication loops
             attempted_urls = []
             candidate_urls = self.build_candidate_urls(resolved_url)
 
@@ -404,60 +398,74 @@ class Command(BaseCommand):
                         if clean_cand not in clean_att and candidate != current_url:
                             current_url = candidate
                             break
-                    self.stdout.write(self.style.WARNING(f"⚠️ https://www.merriam-webster.com/dictionary/retry: Attempt 3 switching to candidate route: {current_url}"))
+                    self.stdout.write(self.style.WARNING(f"⚠️ Switching to fallback candidate route: {current_url}"))
 
                 resolved_url = current_url
                 self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")
 
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
-                    page.wait_for_load_state('networkidle', timeout=15000)
-                    time.sleep(3)
+                    
+                    # FIX 2: Dynamic Framework selector cooling period to allow complete hydration
+                    try:
+                        page.wait_for_selector('h2, h3, h4, strong, [class*="staff"], [class*="team"]', timeout=8000)
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(2500)
 
                     for _ in range(6):
                         page.evaluate("window.scrollBy(0, 800);")
                         time.sleep(0.4)
 
-                    page_summary = page.evaluate('''() => {
-                        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-                        const text = (value) => (value || '').replace(/\s+/g, ' ').trim();
-                        const bodyText = text(document.body ? document.body.innerText || document.body.textContent : '');
-                        const mailtoCount = document.querySelectorAll('a[href^="mailto:"]').length;
-                        const dataEmailCount = document.querySelectorAll('[data-email]').length;
-                        const emailTextMatches = bodyText.match(emailRegex) || [];
-                        const pageUrl = window.location.href || '';
-                        const likelyStaff = /(staff|team|leadership|directory|board|executive|people|officers|members|employee)/i.test(bodyText + ' ' + document.title + ' ' + pageUrl) || /(\/staff\/|\/team\/|\/leadership\/|\/board\/|\/people\/|\/directory\/)/i.test(pageUrl);
-                        return {
-                            title: document.title || '',
-                            url: window.location.href,
-                            mailtoCount,
-                            dataEmailCount,
-                            emailTextMatches: emailTextMatches.length,
-                            wordCount: bodyText.split(/\s+/).filter(Boolean).length,
-                            likelyStaff
-                        };
-                    }''')
-
-                    is_likely_staff_page = page_summary.get('likelyStaff', False)
-
-                    self.stdout.write(
-                        f"📈 [SCAN] URL={page_summary.get('url', resolved_url)} | "
-                        f"Title={page_summary.get('title', 'N/A')} | "
-                        f"mailto={page_summary.get('mailtoCount', 0)} | "
-                        f"data-email={page_summary.get('dataEmailCount', 0)} | "
-                        f"email-text={page_summary.get('emailTextMatches', 0)} | "
-                        f"likely-staff={is_likely_staff_page}"
-                    )
-
-                    # Pass control argument down to JavaScript evaluation scope mapping context
-                    extracted_leads = page.evaluate('''([forceRosterHarvest]) => {
+                    # FIX 5: Integrated Dual-Pattern Extraction Loop Execution Layer
+                    extracted_leads = page.evaluate('''() => {
                         let data = [];
                         let seenEmails = new Set();
                         let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
                         let junk = ["info@", "admin@", "events@", "support@", "frontdesk@", "sales@", "chamber@", "webmaster@", "membership@"];
                         let text = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
-                        // --- PASS 1: STANDARD DIRECT EMAIL HARVESTER ---
+                        // --- PATTERN A: FLAT DOM SIBLING EXTRACTOR (Denver Metro Style - No Emails) ---
+                        let headings = document.querySelectorAll('h2, h3, h4');
+                        let patternAData = [];
+                        
+                        headings.forEach(heading => {
+                            let name = text(heading.innerText || heading.textContent || '');
+                            if (name.length > 4 && name.length < 45 && name.includes(' ') && 
+                                !/(menu|search|navigation|contact|about|history|join|events|gallery)/i.test(name)) {
+                                
+                                let title = "";
+                                let company = "";
+                                let nextEl = heading.nextElementSibling;
+                                let step = 0;
+                                
+                                while (nextEl && step < 3 && !['H2', 'H3', 'H4'].includes(nextEl.tagName)) {
+                                    let siblingText = text(nextEl.innerText || nextEl.textContent || '');
+                                    if (siblingText && siblingText.length > 2 && !siblingText.includes('bio') && !siblingText.includes('profile')) {
+                                        if (!title) {
+                                            title = siblingText;
+                                        } else if (!company) {
+                                            company = siblingText;
+                                            break;
+                                        }
+                                    }
+                                    nextEl = nextEl.nextElementSibling;
+                                    step++;
+                                }
+                                
+                                if (name && title) {
+                                    let fullTitle = title;
+                                    if (company) fullTitle += " - " + company;
+                                    patternAData.push({
+                                        rawName: name,
+                                        title: fullTitle,
+                                        email: 'GENERATE_B2B_MATRIX'
+                                    });
+                                }
+                            }
+                        });
+
+                        // --- PATTERN B: STANDARD CARD / COMPONENT ELEMENT CONTAINER HARVESTER ---
                         let mailtoAnchors = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
                         let attrAnchors = Array.from(document.querySelectorAll('a[href], [data-email], [data-href]'))
                             .filter(el => {
@@ -465,23 +473,6 @@ class Command(BaseCommand):
                                 let dataEmail = (el.getAttribute('data-email') || '').toLowerCase();
                                 return href.includes('@') || dataEmail.includes('@');
                             });
-
-                        if (mailtoAnchors.length === 0) {
-                            let allElements = Array.from(document.querySelectorAll('body *'));
-                            for (let el of allElements) {
-                                let textContent = text(el.innerText || el.textContent || '');
-                                let match = textContent.match(emailRegex);
-                                if (match) {
-                                    let email = match[0].toLowerCase();
-                                    if (!junk.some(word => email.includes(word))) {
-                                        let mockAnchor = document.createElement('a');
-                                        mockAnchor.setAttribute('href', 'mailto:' + email);
-                                        el.appendChild(mockAnchor);
-                                        mailtoAnchors.push(mockAnchor);
-                                    }
-                                }
-                            }
-                        }
 
                         let candidateAnchors = mailtoAnchors.concat(attrAnchors);
                         let anchorSet = [];
@@ -502,6 +493,7 @@ class Command(BaseCommand):
                             }
                         }
 
+                        let patternBData = [];
                         for (let item of anchorSet) {
                             let anchor = item.anchor;
                             let email = item.email;
@@ -517,7 +509,7 @@ class Command(BaseCommand):
                                 if (className.includes('card') || className.includes('member') || className.includes('staff') ||
                                     className.includes('team') || className.includes('profile') || className.includes('person') ||
                                     className.includes('employee') || className.includes('row') || className.includes('block') ||
-                                    className.includes('item') || idName.includes('user') || idName.includes('person')) {
+                                    className.includes('item')) {
                                     cardContainer = currentParent;
                                     break;
                                 }
@@ -535,104 +527,23 @@ class Command(BaseCommand):
                                     .map(el => text(el.innerText || el.textContent || ''))
                                     .filter(txt => txt.length > 1 && !emailRegex.test(txt) && !txt.toLowerCase().includes('bio') && !txt.toLowerCase().includes('profile'));
 
-                                let headingCandidates = Array.from(cardContainer.querySelectorAll('h1,h2,h3,h4,strong'))
-                                    .map(el => text(el.innerText || el.textContent || ''))
-                                    .filter(txt => txt.length > 2 && !emailRegex.test(txt) && txt.split(/\s+/).length <= 6)
-                                    .filter(txt => !/(contact us|about us|read bio|view profile|bio|follow us|subscribe|join us)/i.test(txt));
-
                                 if (cardTextNodes.length >= 2) {
                                     rawName = cardTextNodes[0];
                                     rawTitle = cardTextNodes[1];
-                                } else if (headingCandidates.length >= 2) {
-                                    rawName = headingCandidates[0];
-                                    rawTitle = headingCandidates[1];
-                                } else if (cardTextNodes.length === 1) {
-                                    rawName = cardTextNodes[0];
-                                } else if (headingCandidates.length === 1) {
-                                    rawName = headingCandidates[0];
-                                }
-                            }
-
-                            if (!rawName || rawName.length < 3) {
-                                let allLeafs = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length === 0);
-                                let idx = allLeafs.indexOf(anchor);
-                                if (idx === -1) {
-                                    idx = allLeafs.findIndex(el => el.contains(anchor) || anchor.contains(el));
-                                }
-                                if (idx !== -1) {
-                                    let lookbackCount = 0;
-                                    for (let j = idx - 1; j >= 0 && lookbackCount < 7; j--) {
-                                        let candidateText = text(allLeafs[j].innerText || allLeafs[j].textContent || '');
-                                        if (!candidateText || candidateText.length < 2 || emailRegex.test(candidateText) || /\d{3}/.test(candidateText) || candidateText.toLowerCase().includes('bio')) continue;
-                                        if (!rawName && candidateText !== rawTitle) {
-                                            rawName = candidateText;
-                                        } else if (!rawTitle) {
-                                            rawTitle = candidateText;
-                                            break;
-                                        }
-                                        lookbackCount++;
-                                    }
                                 }
                             }
 
                             if (rawName && rawName.length >= 3) {
-                                let cleanName = rawName.replace(/\s+/g, ' ').trim();
-                                let cleanTitle = (rawTitle || '').replace(/\s+/g, ' ').trim();
-                                let lowerName = cleanName.toLowerCase();
-                                let lowerTitle = cleanTitle.toLowerCase();
-
-                                if (/(contact|about|home|join|events|members|directory|team|staff|subscribe|view profile|read bio)/i.test(lowerName) ||
-                                    /(contact|about|home|join|events|members|directory|team|staff|subscribe|view profile|read bio)/i.test(lowerTitle)) {
-                                    continue;
-                                }
-
-                                data.push({ rawName: cleanName, title: cleanTitle || 'Chamber Executive', email });
+                                patternBData.push({ rawName: text(rawName), title: text(rawTitle) || 'Chamber Executive', email });
                             }
                         }
 
-                        // --- PASS 2: wired `likelyStaff` ACTUATOR ACTIVATION GATE ---
-                        if (data.length === 0 && forceRosterHarvest) {
-                            let nameHeaders = Array.from(document.querySelectorAll('h2, h3, h4, strong')).filter(el => {
-                                let val = text(el.innerText || el.textContent || '');
-                                return val.length >= 3 && val.length <= 40 && val.includes(' ');
-                            });
-
-                            for (let heading of nameHeaders) {
-                                let rawName = text(heading.innerText || heading.textContent || '');
-                                let rawTitle = '';
-                                let companyText = '';
-
-                                let currentSibling = heading.nextElementSibling;
-                                let limit = 0;
-                                while (currentSibling && limit < 3) {
-                                    let siblingText = text(currentSibling.innerText || currentSibling.textContent || '');
-                                    if (siblingText && siblingText.length > 2 && !siblingText.includes('subscribe') && !siblingText.includes('view')) {
-                                        if (!rawTitle) {
-                                            rawTitle = siblingText;
-                                        } else {
-                                            companyText = siblingText;
-                                            break;
-                                        }
-                                    }
-                                    currentSibling = currentSibling.nextElementSibling;
-                                    limit++;
-                                }
-
-                                if (rawName && rawName.length >= 3) {
-                                    let fullTitleString = rawTitle;
-                                    if (companyText) {
-                                        fullTitleString += " - " + companyText;
-                                    }
-                                    data.push({
-                                        rawName: rawName,
-                                        title: fullTitleString || 'Chamber Board Director',
-                                        email: 'GENERATE_B2B_MATRIX'
-                                    });
-                                }
-                            }
+                        // Strategic fallbacks mapping: If Pattern B yields nothing, default directly to Pattern A
+                        if (patternBData.length > 0) {
+                            return patternBData;
                         }
-                        return data;
-                    }''', [is_likely_staff_page])
+                        return patternAData;
+                    }''')
 
                     seen_names = set()
 

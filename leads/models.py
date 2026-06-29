@@ -9,6 +9,12 @@ class ChamberDirectory(models.Model):
     Represents a specific chamber asset nationwide. 
     Allows bundling leads by state or city for future packages.
     """
+    RECIPE_CHOICES = [
+        ('DEFAULT', 'Universal Proximity Engine'),
+        ('DENVER', 'Flat DOM Sibling Walker (Denver Metro Overrides)'),
+        ('MANUAL', 'Static Catalog Curation (Manual Overrides Only)'),
+    ]
+
     name = models.CharField(max_length=255, help_text="e.g., Austin Chamber of Commerce")
     state = models.CharField(max_length=2, db_index=True, help_text="2-letter US state code (e.g., TX, FL, GA)")
     city_or_region = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Austin")
@@ -16,6 +22,14 @@ class ChamberDirectory(models.Model):
     is_active = models.BooleanField(default=True, help_text="Controls visibility on the front-end market")
     created_at = models.DateTimeField(auto_now_add=True)
     
+    # ⚙️ Hybrid Recipe Router: Dictates if the worker should run automation or a targeted hardcoded recipe
+    recipe_type = models.CharField(
+        max_length=50, 
+        choices=RECIPE_CHOICES, 
+        default='DEFAULT',
+        help_text="Controls how Playwright interacts with this layout structure"
+    )
+
     # 🌟 Added temporary storage field for tracking risk-free preview data layouts
     staged_leads_data = models.JSONField(default=list, blank=True, help_text="Temporary storage for previews")
 
@@ -24,7 +38,7 @@ class ChamberDirectory(models.Model):
         ordering = ['state', 'name']
 
     def __str__(self):
-        return f"[{self.state}] {self.name}"
+        return f"[{self.state}] {self.name} ({self.get_recipe_type_display()})"
 
 
 class ChamberLead(models.Model):

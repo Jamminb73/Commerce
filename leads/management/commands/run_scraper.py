@@ -337,6 +337,14 @@ class Command(BaseCommand):
         staged_json_payload = []
         resolved_url = target_url
 
+        # ⚙️ MODEL MATRIX ROUTING LAYER: Check if a recipe override layout type exists inside PostgreSQL
+        directory_config = ChamberDirectory.objects.filter(name__icontains=org_name).first()
+        active_recipe = directory_config.recipe_type if directory_config else 'DEFAULT'
+
+        if active_recipe == 'MANUAL':
+            self.stdout.write(self.style.SUCCESS(f"🛑 [RECIPE ROUTER]: {org_name} is marked as MANUAL. Skipping automated scrape cycles entirely."))
+            return staged_json_payload, resolved_url
+
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -359,7 +367,7 @@ class Command(BaseCommand):
                     return staged_json_payload, resolved_url
 
             # 🎯 STAGE 1: Navigational Shift (Avoid member search widgets, hunt for human listings)
-            if any(x in resolved_url.lower() for x in ["member-directory", "members", "directory"]):
+            if active_recipe == 'DEFAULT' and any(x in resolved_url.lower() for x in ["member-directory", "members", "directory"]):
                 self.stdout.write(self.style.WARNING(f"⚠️ [PIVOT DETECTED]: Target path points to business listings. Scouting leadership targets..."))
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=30000)
@@ -383,7 +391,10 @@ class Command(BaseCommand):
             attempted_urls = []
             candidate_urls = self.build_candidate_urls(resolved_url)
 
-            for attempt in range(3):
+            # Restrict attempts to 1 if we are targeting an explicit hardcoded metropolitan recipe type
+            max_attempts = 1 if active_recipe != 'DEFAULT' else 3
+
+            for attempt in range(max_attempts):
                 current_url = resolved_url
                 if attempt == 1:
                     parsed_uri = urllib.parse.urlparse(resolved_url)
@@ -401,7 +412,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f"⚠️ Switching to fallback candidate route: {current_url}"))
 
                 resolved_url = current_url
-                self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing layout proximity scoper at: {resolved_url}")
+                self.stdout.write(f"⚙️ [PLAYWRIGHT]: (Attempt {attempt + 1}) Executing extraction map layout via recipe matching code [{active_recipe}] at: {resolved_url}")
 
                 try:
                     page.goto(resolved_url, wait_until="domcontentloaded", timeout=45000)
@@ -417,8 +428,8 @@ class Command(BaseCommand):
                         page.evaluate("window.scrollBy(0, 800);")
                         time.sleep(0.4)
 
-                    # FIX 5: Integrated Dual-Pattern Extraction Loop Execution Layer
-                    extracted_leads = page.evaluate('''() => {
+                    # FIX 5: Integrated Dual-Pattern Extraction Loop Execution Layer passed down to evaluating execution context
+                    extracted_leads = page.evaluate('''([recipeType]) => {
                         let data = [];
                         let seenEmails = new Set();
                         let emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
@@ -464,6 +475,11 @@ class Command(BaseCommand):
                                 }
                             }
                         });
+
+                        // Force Pattern A parsing output immediately if database record enforces it explicitly
+                        if (recipeType === 'DENVER') {
+                            return patternAData;
+                        }
 
                         // --- PATTERN B: STANDARD CARD / COMPONENT ELEMENT CONTAINER HARVESTER ---
                         let mailtoAnchors = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
@@ -538,12 +554,11 @@ class Command(BaseCommand):
                             }
                         }
 
-                        // Strategic fallbacks mapping: If Pattern B yields nothing, default directly to Pattern A
                         if (patternBData.length > 0) {
                             return patternBData;
                         }
                         return patternAData;
-                    }''')
+                    }''', [active_recipe])
 
                     seen_names = set()
 
